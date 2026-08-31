@@ -23,7 +23,7 @@ const statusRows = [
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden pt-10 sm:pt-16 lg:pt-20">
+    <section className="relative overflow-x-hidden pt-10 pb-20 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28">
       <div className="mx-auto grid max-w-7xl gap-16 px-5 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-12">
         <div className="flex flex-col items-start gap-6">
           <motion.p
