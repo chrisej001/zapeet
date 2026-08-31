@@ -1,4 +1,5 @@
 import { ClockIcon, ShieldCheckIcon, TruckIcon } from "./icons";
+import { Reveal } from "./reveal";
 
 type Flow = {
   tag: string;
@@ -58,7 +59,7 @@ export function HowItWorks() {
   return (
     <section id="how-it-works" className="py-16 sm:py-24 lg:py-28">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        <div className="mb-12 max-w-2xl">
+        <Reveal className="mb-12 max-w-2xl">
           <p className="mb-3.5 text-xs font-bold tracking-[0.1em] text-ink uppercase">
             How Zapeet works
           </p>
@@ -69,45 +70,44 @@ export function HowItWorks() {
             Vendors pick a flow, Zapeet generates the link, and everything from
             payment verification to rider dispatch runs on its own.
           </p>
-        </div>
+        </Reveal>
 
         <div className="grid grid-cols-1 gap-7 lg:grid-cols-2">
-          {flows.map((flow) => {
+          {flows.map((flow, i) => {
             const Icon = flow.icon;
             const tone = toneClasses[flow.tone];
             return (
-              <div
-                key={flow.title}
-                className="flex flex-col gap-6 rounded-[20px] border border-ink/10 bg-white p-8"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-xl ${tone.iconWrap}`}>
-                    <Icon className="h-[22px] w-[22px]" />
-                  </div>
-                  <p className={`text-xs font-bold tracking-[0.1em] uppercase ${tone.tag}`}>
-                    {flow.tag}
-                  </p>
-                </div>
-
-                <h3 className="text-2xl">{flow.title}</h3>
-                <p className="text-base text-ink-60">{flow.desc}</p>
-
-                <div className="flex flex-col gap-3.5">
-                  {flow.steps.map((step, i) => (
-                    <div key={step} className="flex items-start gap-3.5">
-                      <div className={`mt-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg text-xs font-bold ${tone.step}`}>
-                        {i + 1}
-                      </div>
-                      <p className="text-sm font-medium text-ink">{step}</p>
+              <Reveal key={flow.title} delay={i * 0.12} y={32}>
+                <div className="flex h-full flex-col gap-6 rounded-[20px] border border-ink/10 bg-white p-8">
+                  <div className="flex items-center gap-3.5">
+                    <div className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-xl ${tone.iconWrap}`}>
+                      <Icon className="h-[22px] w-[22px]" />
                     </div>
-                  ))}
-                </div>
+                    <p className={`text-xs font-bold tracking-[0.1em] uppercase ${tone.tag}`}>
+                      {flow.tag}
+                    </p>
+                  </div>
 
-                <div className="flex items-center gap-2.5 border-t border-ink/10 pt-4 text-sm font-semibold text-ink-60">
-                  <ClockIcon className="h-4 w-4 shrink-0" />
-                  {flow.bestFor}
+                  <h3 className="text-2xl">{flow.title}</h3>
+                  <p className="text-base text-ink-60">{flow.desc}</p>
+
+                  <div className="flex flex-col gap-3.5">
+                    {flow.steps.map((step, j) => (
+                      <div key={step} className="flex items-start gap-3.5">
+                        <div className={`mt-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg text-xs font-bold ${tone.step}`}>
+                          {j + 1}
+                        </div>
+                        <p className="text-sm font-medium text-ink">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2.5 border-t border-ink/10 pt-4 text-sm font-semibold text-ink-60">
+                    <ClockIcon className="h-4 w-4 shrink-0" />
+                    {flow.bestFor}
+                  </div>
                 </div>
-              </div>
+              </Reveal>
             );
           })}
         </div>

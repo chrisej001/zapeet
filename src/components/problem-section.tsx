@@ -1,4 +1,5 @@
 import { AlertIcon, BankIcon, ChatIcon, GridIcon } from "./icons";
+import { Reveal } from "./reveal";
 
 const painPoints = [
   {
@@ -27,7 +28,7 @@ export function ProblemSection() {
   return (
     <section className="bg-ink py-16 sm:py-24 lg:py-28">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        <div className="mb-11 max-w-xl">
+        <Reveal className="mb-11 max-w-xl">
           <p className="mb-3.5 text-xs font-bold tracking-[0.1em] text-marigold uppercase">
             The old way
           </p>
@@ -38,18 +39,17 @@ export function ProblemSection() {
             Moving goods across Lagos creates real operational anxiety — vendors
             absorb the cost of a broken process, one order at a time.
           </p>
-        </div>
+        </Reveal>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {painPoints.map(({ icon: Icon, title, body }) => (
-            <div
-              key={title}
-              className="flex flex-col gap-4 rounded-2xl border border-paper/10 bg-paper/5 p-6"
-            >
-              <Icon className="h-[22px] w-[22px] text-marigold" />
-              <h4 className="text-base text-paper">{title}</h4>
-              <p className="text-sm text-paper/60">{body}</p>
-            </div>
+          {painPoints.map(({ icon: Icon, title, body }, i) => (
+            <Reveal key={title} delay={i * 0.08}>
+              <div className="flex h-full flex-col gap-4 rounded-2xl border border-paper/10 bg-paper/5 p-6">
+                <Icon className="h-[22px] w-[22px] text-marigold" />
+                <h4 className="text-base text-paper">{title}</h4>
+                <p className="text-sm text-paper/60">{body}</p>
+              </div>
+            </Reveal>
           ))}
         </div>
       </div>

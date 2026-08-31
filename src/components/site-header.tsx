@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Brand } from "./logo";
+import { MotionLink } from "./motion-link";
 
 const navLinks = [
   { href: "#how-it-works", label: "How it works" },
@@ -28,18 +29,19 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <a
+          <MotionLink
             href="#"
-            className="hidden rounded-[10px] border border-ink/25 px-6 py-3 text-sm font-semibold text-ink hover:border-ink sm:inline-flex"
+            lift={false}
+            className="hidden rounded-[10px] border border-ink/25 px-6 py-3 text-sm font-semibold text-ink sm:inline-flex"
           >
             Log in
-          </a>
-          <a
+          </MotionLink>
+          <MotionLink
             href="#"
-            className="rounded-[10px] bg-ink px-6 py-3 text-sm font-semibold text-paper hover:bg-ink/90"
+            className="rounded-[10px] bg-ink px-6 py-3 text-sm font-semibold text-paper"
           >
             Get started
-          </a>
+          </MotionLink>
         </div>
       </div>
     </header>

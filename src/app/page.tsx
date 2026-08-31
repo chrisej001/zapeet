@@ -1,6 +1,7 @@
 import { FinalCta } from "@/components/final-cta";
 import { Hero } from "@/components/hero";
 import { HowItWorks } from "@/components/how-it-works";
+import { PhotoShowcase } from "@/components/photo-showcase";
 import { ProblemSection } from "@/components/problem-section";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -15,6 +16,7 @@ export default function Home() {
         <Hero />
         <ProblemSection />
         <HowItWorks />
+        <PhotoShowcase />
         <WhoFor />
         <TrustSection />
         <FinalCta />
