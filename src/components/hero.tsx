@@ -178,10 +178,6 @@ export function Hero() {
               <div className="text-xs text-ink-60">door to door, Lagos</div>
             </div>
           </motion.div>
-
-          <p className="pr-1 text-right text-xs text-ink-60 italic">
-            Sample link — insured flow, for illustration
-          </p>
         </div>
       </div>
     </section>
