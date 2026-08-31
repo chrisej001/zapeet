@@ -1,0 +1,7 @@
+.DS_Store
+.vercel
+
+# Claude Design canvas working files (not the deployable site — index.html is)
+Main.dc.html
+canvas.json
+zapeet-landing-page.html
