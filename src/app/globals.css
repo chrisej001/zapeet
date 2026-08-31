@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #1b1f3b;
+  --color-ink-60: #5c6079;
+  --color-marigold: #f2a93b;
+  --color-marigold-ink: #b97a1e;
+  --color-terracotta: #d85a30;
+  --color-paper: #f7f4ee;
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink-60);
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--color-ink);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+  }
+  a {
+    color: var(--color-ink);
+  }
+  a:hover {
+    color: var(--color-terracotta);
+  }
+}
