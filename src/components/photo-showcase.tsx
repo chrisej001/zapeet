@@ -7,7 +7,7 @@ const easeOut = [0.16, 1, 0.3, 1] as const;
 
 const tiles = [
   {
-    src: "/images/checkout-phone.jpg",
+    src: "/images/checkout-phone-v2.jpg",
     alt: "Customer completing a payment on their phone",
     eyebrow: "Insured checkout",
     caption: "One link, paid and verified in seconds.",
