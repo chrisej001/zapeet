@@ -1,7 +1,9 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { BoltIcon, DotsIcon, LinkIcon, ShieldCheckIcon, TruckIcon } from "./icons";
+import { HeroFlowDemo } from "./hero-flow-demo";
 import { MotionLink } from "./motion-link";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
@@ -22,6 +24,13 @@ const statusRows = [
 ];
 
 export function Hero() {
+  const [showDemo, setShowDemo] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowDemo(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <section className="relative overflow-x-hidden pt-10 pb-20 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28">
       <div className="mx-auto grid max-w-7xl gap-16 px-5 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-12">
@@ -104,6 +113,7 @@ export function Hero() {
           </motion.div>
 
           <motion.div
+            layout
             initial={{ opacity: 0, y: 28, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
@@ -117,46 +127,61 @@ export function Hero() {
               <DotsIcon className="h-[18px] w-[18px] text-ink-60" />
             </div>
 
-            <div>
-              <div className="text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
-                ₦185,000
-              </div>
-              <div className="mt-1.5 text-base text-ink-60">MacBook Air M2 · 13-inch</div>
-            </div>
+            <AnimatePresence mode="wait">
+              {!showDemo ? (
+                <motion.div key="intro" exit={{ opacity: 0 }} transition={{ duration: 0.35 }} className="flex flex-col gap-6">
+                  <div>
+                    <div className="text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+                      ₦185,000
+                    </div>
+                    <div className="mt-1.5 text-base text-ink-60">MacBook Air M2 · 13-inch</div>
+                  </div>
 
-            <div className="flex gap-2.5">
-              <span className="rounded-full bg-marigold px-4 py-2.5 text-sm font-semibold text-ink">
-                Insured
-              </span>
-              <span className="rounded-full border border-ink/20 px-4 py-2.5 text-sm font-semibold text-ink-60">
-                Pure delivery
-              </span>
-            </div>
+                  <div className="flex gap-2.5">
+                    <span className="rounded-full bg-marigold px-4 py-2.5 text-sm font-semibold text-ink">
+                      Insured
+                    </span>
+                    <span className="rounded-full border border-ink/20 px-4 py-2.5 text-sm font-semibold text-ink-60">
+                      Pure delivery
+                    </span>
+                  </div>
 
-            <div className="h-px bg-ink/10" />
+                  <div className="h-px bg-ink/10" />
 
-            <div className="flex flex-col gap-4">
-              {statusRows.map((row, i) => (
-                <motion.div
-                  key={row.text}
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.9 + i * 0.35, ease: "easeOut" }}
-                  className="flex items-center gap-3.5"
-                >
-                  <StatusIcon icon={row.icon} tone={row.tone} />
-                  <div className="text-base font-semibold text-ink">{row.text}</div>
+                  <div className="flex flex-col gap-4">
+                    {statusRows.map((row, i) => (
+                      <motion.div
+                        key={row.text}
+                        initial={{ opacity: 0, x: -12 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5, delay: 0.9 + i * 0.35, ease: "easeOut" }}
+                        className="flex items-center gap-3.5"
+                      >
+                        <StatusIcon icon={row.icon} tone={row.tone} />
+                        <div className="text-base font-semibold text-ink">{row.text}</div>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  <MotionLink
+                    href="#"
+                    lift={false}
+                    className="w-full rounded-[10px] border border-ink/25 py-4 text-center text-sm font-semibold text-ink"
+                  >
+                    Copy payment link
+                  </MotionLink>
                 </motion.div>
-              ))}
-            </div>
-
-            <MotionLink
-              href="#"
-              lift={false}
-              className="w-full rounded-[10px] border border-ink/25 py-4 text-center text-sm font-semibold text-ink"
-            >
-              Copy payment link
-            </MotionLink>
+              ) : (
+                <motion.div
+                  key="demo"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <HeroFlowDemo />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* floating stat badge */}
