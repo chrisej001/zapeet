@@ -6,13 +6,7 @@ import { CheckCircleIcon } from "./checkout-icons";
 
 const initialState: CreateOrderState = { error: null, order: null };
 
-export function CheckoutForm({
-  slug,
-  flow,
-}: {
-  slug: string;
-  flow: "insured" | "pure_delivery";
-}) {
+export function CheckoutForm({ slug }: { slug: string }) {
   const action = createOrder.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initialState);
 
@@ -43,12 +37,8 @@ export function CheckoutForm({
     <form action={formAction} className="flex flex-col gap-4 rounded-[20px] border border-ink/10 bg-white p-6">
       <Field name="customer_name" label="Full name" placeholder="Ada Okoye" />
       <Field name="customer_phone" label="Phone" type="tel" placeholder="08012345678" />
-      {flow === "pure_delivery" && (
-        <>
-          <Field name="delivery_address" label="Delivery address" placeholder="14 Allen Avenue, Ikeja" />
-          <Field name="delivery_state" label="State" placeholder="Lagos" />
-        </>
-      )}
+      <Field name="delivery_address" label="Delivery address" placeholder="14 Allen Avenue, Ikeja" />
+      <Field name="delivery_state" label="State" placeholder="Lagos" />
 
       {state.error && (
         <div className="rounded-[10px] bg-terracotta/10 px-4 py-3 text-sm font-medium text-terracotta">

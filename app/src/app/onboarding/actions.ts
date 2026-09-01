@@ -27,8 +27,19 @@ export async function completeOnboarding(
   const dateOfBirth = String(formData.get("date_of_birth") ?? "").trim();
   const bvn = String(formData.get("bvn") ?? "").trim();
   const nin = String(formData.get("nin") ?? "").trim();
+  const pickupAddress = String(formData.get("pickup_address") ?? "").trim();
+  const pickupState = String(formData.get("pickup_state") ?? "").trim();
 
-  if (!firstName || !lastName || !phone || !dateOfBirth || !bvn || !nin) {
+  if (
+    !firstName ||
+    !lastName ||
+    !phone ||
+    !dateOfBirth ||
+    !bvn ||
+    !nin ||
+    !pickupAddress ||
+    !pickupState
+  ) {
     return { error: "All fields are required." };
   }
   if (!/^\d{11}$/.test(bvn)) {
@@ -59,6 +70,8 @@ export async function completeOnboarding(
         date_of_birth: dateOfBirth,
         bvn,
         nin,
+        pickup_address: pickupAddress,
+        pickup_state: pickupState,
         felicity_talent_ref: talent.talent_ref,
         felicity_account_number: talent.account_number,
         felicity_account_name: talent.account_name,

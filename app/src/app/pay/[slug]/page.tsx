@@ -50,7 +50,7 @@ export default async function CheckoutPage({
               </span>
             </div>
 
-            <CheckoutForm slug={slug} flow={link.flow as "insured" | "pure_delivery"} />
+            <CheckoutForm slug={slug} />
           </>
         )}
       </div>

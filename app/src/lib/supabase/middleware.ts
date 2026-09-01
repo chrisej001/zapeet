@@ -4,6 +4,12 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PATHS = ["/", "/auth", "/pay"];
 
 export async function updateSession(request: NextRequest) {
+  // API routes authenticate themselves per-route (e.g. webhook signature
+  // verification) — they're not part of the session/onboarding gating below.
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

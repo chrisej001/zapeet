@@ -45,6 +45,15 @@ export default function OnboardingPage() {
             inputMode="numeric"
             maxLength={11}
           />
+          <Field
+            name="pickup_address"
+            label="Pickup address"
+            placeholder="14 Otigba Street, Ikeja"
+          />
+          <Field name="pickup_state" label="State" placeholder="Lagos" />
+          <p className="-mt-2 text-xs text-ink-60">
+            Where riders collect items for delivery. Same-day delivery currently only covers Lagos-to-Lagos.
+          </p>
 
           {state.error && (
             <div className="rounded-[10px] bg-terracotta/10 px-4 py-3 text-sm font-medium text-terracotta">

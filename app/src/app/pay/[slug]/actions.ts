@@ -44,8 +44,8 @@ export async function createOrder(
   const deliveryAddress = String(formData.get("delivery_address") ?? "").trim();
   const deliveryState = String(formData.get("delivery_state") ?? "").trim();
 
-  if (!customerName || !customerPhone) {
-    return { error: "Enter your name and phone number.", order: null };
+  if (!customerName || !customerPhone || !deliveryAddress || !deliveryState) {
+    return { error: "All fields are required — every order includes rider delivery.", order: null };
   }
 
   const { error: insertError } = await admin.from("orders").insert({
