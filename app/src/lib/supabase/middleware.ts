@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/", "/auth"];
+const PUBLIC_PATHS = ["/", "/auth", "/pay"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -42,6 +42,34 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
+  }
+
+  if (user && path !== "/onboarding") {
+    const { data: vendor } = await supabase
+      .from("vendors")
+      .select("onboarded_at")
+      .eq("id", user.id)
+      .single();
+
+    if (vendor && !vendor.onboarded_at && !isPublic) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  if (user && path === "/onboarding") {
+    const { data: vendor } = await supabase
+      .from("vendors")
+      .select("onboarded_at")
+      .eq("id", user.id)
+      .single();
+
+    if (vendor?.onboarded_at) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;
