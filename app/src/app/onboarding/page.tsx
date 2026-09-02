@@ -50,9 +50,20 @@ export default function OnboardingPage() {
             label="Pickup address"
             placeholder="14 Otigba Street, Ikeja"
           />
-          <Field name="pickup_state" label="State" placeholder="Lagos" />
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
+              State
+            </span>
+            <input
+              name="pickup_state"
+              type="text"
+              value="Lagos"
+              readOnly
+              className="rounded-[10px] border border-ink/15 bg-ink/5 px-4 py-3 text-sm text-ink-60 outline-none"
+            />
+          </label>
           <p className="-mt-2 text-xs text-ink-60">
-            Where riders collect items for delivery. Same-day delivery currently only covers Lagos-to-Lagos.
+            Where riders collect items for delivery. Same-day delivery only covers Lagos-to-Lagos right now, so this is fixed to Lagos.
           </p>
 
           {state.error && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createOrder, type CreateOrderState } from "./actions";
 import { CheckCircleIcon } from "./checkout-icons";
 
@@ -8,15 +8,47 @@ const initialState: CreateOrderState = { error: null, order: null };
 
 export function CheckoutForm({
   slug,
+  itemName,
   flow,
 }: {
   slug: string;
+  itemName: string;
   flow: "insured" | "pure_delivery";
 }) {
   const action = createOrder.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initialState);
+  const [confirmedToPay, setConfirmedToPay] = useState(false);
 
   if (state.order) {
+    const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
+
+    if (!confirmedToPay) {
+      return (
+        <div className="flex flex-col gap-5 rounded-[20px] border border-ink/10 bg-white p-6">
+          <p className="text-base font-bold text-ink">Order summary</p>
+          <div className="flex flex-col gap-3 rounded-[14px] bg-paper p-4">
+            <Row label={itemName} value={naira(state.order.goodsAmountNaira)} />
+            {state.order.insuranceAmountNaira > 0 && (
+              <Row label="Device insurance" value={naira(state.order.insuranceAmountNaira)} />
+            )}
+            <Row label="Delivery" value={naira(state.order.deliveryAmountNaira)} />
+            <div className="h-px bg-ink/10" />
+            <Row
+              label="Total"
+              value={naira(state.order.totalAmountNaira)}
+              bold
+            />
+          </div>
+          <button
+            onClick={() => setConfirmedToPay(true)}
+            className="w-full rounded-[10px] bg-ink py-3.5 text-sm font-semibold text-paper"
+          >
+            Pay {naira(state.order.totalAmountNaira)}
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col gap-5 rounded-[20px] border border-ink/10 bg-white p-6">
         <div className="flex flex-col items-center gap-2 text-center">
@@ -30,7 +62,7 @@ export function CheckoutForm({
         </div>
 
         <div className="flex flex-col gap-3 rounded-[14px] bg-paper p-4">
-          <Row label="Amount" value={`₦${state.order.amountNaira.toLocaleString("en-NG")}`} />
+          <Row label="Amount" value={naira(state.order.totalAmountNaira)} bold />
           <Row label="Account number" value={state.order.accountNumber} />
           <Row label="Bank" value={state.order.bankName} />
           <Row label="Account name" value={state.order.accountName} />
@@ -48,7 +80,17 @@ export function CheckoutForm({
       <Field name="customer_email" label="Email" type="email" placeholder="ada@example.com" />
       <Field name="customer_phone" label="Phone" type="tel" placeholder="08012345678" />
       <Field name="delivery_address" label="Delivery address" placeholder="14 Allen Avenue, Ikeja" />
-      <Field name="delivery_state" label="State" placeholder="Lagos" />
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">State</span>
+        <input
+          name="delivery_state"
+          type="text"
+          value="Lagos"
+          readOnly
+          className="rounded-[10px] border border-ink/15 bg-ink/5 px-4 py-3 text-sm text-ink-60 outline-none"
+        />
+      </label>
+      <p className="-mt-2 text-xs text-ink-60">Same-day delivery only covers Lagos right now.</p>
 
       {flow === "insured" && (
         <div className="flex flex-col gap-4 rounded-[10px] border border-marigold/30 bg-marigold/5 p-4">
@@ -87,7 +129,7 @@ export function CheckoutForm({
         disabled={pending}
         className="mt-1 w-full rounded-[10px] bg-ink py-3.5 text-sm font-semibold text-paper disabled:opacity-60"
       >
-        {pending ? "Please wait…" : "Continue to pay"}
+        {pending ? "Please wait…" : "See total & pay"}
       </button>
     </form>
   );
@@ -118,11 +160,11 @@ function Field({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="text-sm text-ink-60">{label}</span>
-      <span className="text-sm font-bold text-ink">{value}</span>
+      <span className={`text-sm ${bold ? "font-semibold text-ink" : "text-ink-60"}`}>{label}</span>
+      <span className={`text-sm font-bold text-ink ${bold ? "text-base" : ""}`}>{value}</span>
     </div>
   );
 }

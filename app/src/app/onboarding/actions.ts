@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { onboardTalent, FelicityError } from "@/lib/felicity/client";
+import { isPlausibleDateOfBirth } from "@/lib/validate-dob";
 
 export type OnboardState = {
   error: string | null;
@@ -47,6 +48,9 @@ export async function completeOnboarding(
   }
   if (!/^\d{11}$/.test(nin)) {
     return { error: "NIN must be exactly 11 digits." };
+  }
+  if (!isPlausibleDateOfBirth(dateOfBirth)) {
+    return { error: "Enter a valid date of birth." };
   }
 
   try {

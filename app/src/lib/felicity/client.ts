@@ -199,3 +199,67 @@ export function createDelivery(input: {
 export function getDelivery(delivery_reference: string) {
   return call<{ success: true; delivery: Delivery }>("get_delivery", { delivery_reference });
 }
+
+// ---- Checkout: one-time collection account, auto-split on payment ----
+// Verified live 2026-09-02: this is the real flow for a customer who isn't
+// (and shouldn't need to become) an onboarded talent — no BVN/NIN. Only the
+// vendor needs to already be onboarded; their goods cut is auto-credited,
+// and delivery/insurance are booked/bought automatically on payment.
+
+export type Checkout = {
+  checkout_reference: string;
+  status: "awaiting_payment" | "settled" | string;
+  goods_amount_naira: number;
+  delivery_amount_naira: number;
+  insurance_amount_naira: number;
+  total_amount_naira: number;
+  account_number: string;
+  account_name: string;
+  bank_name: string;
+  expires_at: string;
+  settlement_error: string | null;
+  delivery_reference?: string | null;
+  policy_reference?: string | null;
+};
+
+export function createCheckout(input: {
+  order_ref: string;
+  vendor_ref: string;
+  goods_amount_naira: number;
+  delivery?: {
+    pickup_contact_name: string;
+    pickup_contact_phone: string;
+    pickup_address: string;
+    pickup_state: string;
+    dropoff_contact_name: string;
+    dropoff_contact_phone: string;
+    dropoff_address: string;
+    dropoff_state: string;
+    item_description: string;
+  };
+  insurance?: {
+    product_id: string;
+    device_type: string;
+    device_value: number;
+    device_make: string;
+    device_model: string;
+    gender: string;
+    date_of_birth: string;
+    address: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    [extra: string]: unknown;
+  };
+}) {
+  return call<{ success: true; checkout: Checkout }>("create_checkout", input);
+}
+
+export function getCheckout(checkout_reference: string) {
+  return call<{ success: true; checkout: Checkout }>("get_checkout", { checkout_reference });
+}
+
+/** Test mode only — settles a checkout without a real transfer. */
+export function simulateCheckoutFunding(checkout_reference: string) {
+  return call<{ checkout: Checkout }>("simulate_checkout_funding", { checkout_reference });
+}

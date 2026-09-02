@@ -2,14 +2,10 @@ import "server-only";
 import crypto from "node:crypto";
 
 /**
- * Verifies the `x-felicity-signature` header against the raw request body.
- *
- * The Felicity docs specify HMAC-SHA256 signing shared across their proxy
- * families, cross-referencing a companion brief we don't have on hand, so
- * this assumes the standard convention (hex digest of the raw body, keyed
- * by the webhook signing secret) rather than a confirmed spec. Verify this
- * against a real delivery (e.g. via `simulate_funding` in test mode once a
- * public URL is registered) and adjust if Felicity's actual format differs.
+ * Verifies the `x-felicity-signature` header against the raw request body:
+ * hex HMAC-SHA256 of the raw body, keyed by the webhook signing secret.
+ * Confirmed against a real Felicity-delivered webhook (2026-09-02, via
+ * simulate_funding against the production URL) — not just the docs.
  */
 export function verifyFelicitySignature(rawBody: string, signatureHeader: string | null): boolean {
   if (!signatureHeader) return false;

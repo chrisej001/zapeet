@@ -1,13 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyFelicitySignature } from "@/lib/felicity/webhook";
-import {
-  buyInsurance,
-  createDelivery,
-  findGadgetCoverProduct,
-  getDeliveryQuote,
-  toInternationalPhone,
-} from "@/lib/felicity/client";
+import { getDelivery, getPolicy } from "@/lib/felicity/client";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = Record<string, any>;
@@ -29,10 +23,11 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Event envelope shape isn't fully documented — hedge across the likely
-  // field names rather than assume one.
-  const eventType: string | undefined = payload.event ?? payload.type ?? payload.event_type;
-  const data: Json = payload.data ?? payload;
+  // Confirmed against real deliveries: the body is flat event data with no
+  // event/type field at all — the event name comes from the
+  // x-felicity-event header instead.
+  const eventType = req.headers.get("x-felicity-event") ?? undefined;
+  const data: Json = payload;
 
   await admin.from("felicity_webhook_events").insert({
     event_type: eventType ?? "unknown",
@@ -41,21 +36,26 @@ export async function POST(req: NextRequest) {
 
   try {
     switch (eventType) {
-      case "talent.va_credited":
-        await handleVaCredited(admin, data);
+      case "talent.checkout_completed":
+        await handleCheckoutCompleted(admin, data);
+        break;
+      case "talent.checkout_fulfillment_failed":
+        await handleCheckoutFulfillmentFailed(admin, data);
         break;
       case "talent.policy_issued":
       case "talent.policy_failed":
         await handlePolicyEvent(admin, data, eventType);
         break;
-      case "talent.delivery_created":
       case "talent.delivery_status_updated":
       case "talent.delivery_completed":
       case "talent.delivery_failed":
         await handleDeliveryEvent(admin, data);
         break;
       default:
-        // Unrecognized or not-yet-handled event — already logged above.
+        // Includes talent.delivery_created / talent.va_credited / etc. —
+        // informational only, no order-linking field, nothing to act on
+        // directly (checkout_completed is what actually drives our state).
+        // Already logged above.
         break;
     }
   } catch (err) {
@@ -69,74 +69,72 @@ export async function POST(req: NextRequest) {
 
 // admin client's exact type isn't worth importing here; keep this loose
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleVaCredited(admin: any, data: Json) {
-  const talentRef: string | undefined = data.talent_ref ?? data.talent?.talent_ref;
-  const amountNaira: number | undefined =
-    data.amount_naira ?? (typeof data.amount_kobo === "number" ? data.amount_kobo / 100 : undefined);
-  const reference: string | null = data.reference ?? data.transaction_reference ?? data.id ?? null;
+async function handleCheckoutCompleted(admin: any, data: Json) {
+  // order.id doubles as Felicity's order_ref/checkout_reference.
+  const orderId: string | undefined = data.checkout_reference;
+  const deliveryReference: string | null = data.delivery_reference ?? null;
+  const policyReference: string | null = data.policy_reference ?? null;
+  const vendorAmountNaira: number | undefined = data.vendor_amount_naira;
 
-  if (!talentRef || amountNaira == null) return;
+  if (!orderId) return;
 
-  const { data: vendor } = await admin
-    .from("vendors")
-    .select("id, business_name, phone, pickup_address, pickup_state")
-    .eq("felicity_talent_ref", talentRef)
-    .single();
-  if (!vendor) return;
-
-  const { data: pendingOrders } = await admin
+  const { data: order } = await admin
     .from("orders")
-    .select(
-      "id, payment_link_id, customer_first_name, customer_last_name, customer_email, customer_phone, customer_gender, customer_date_of_birth, delivery_address, delivery_state, payment_links(flow, item_name, amount_naira, device_type, device_make, device_model)",
-    )
-    .eq("vendor_id", vendor.id)
-    .eq("payment_status", "pending")
-    .order("created_at", { ascending: true });
+    .select("id, vendor_id, payment_link_id, insurance_amount_naira, payment_links(flow)")
+    .eq("id", orderId)
+    .single();
+  if (!order) return;
 
-  const match = (pendingOrders ?? []).find(
-    (o: Json) => Number(o.payment_links?.amount_naira) === amountNaira,
-  );
-  if (!match) return;
+  const rebateNaira =
+    order.payment_links?.flow === "insured" && order.insurance_amount_naira
+      ? Number(order.insurance_amount_naira) * 0.025
+      : 0;
 
   // Idempotent: only proceeds if still pending, so a duplicate/retried
   // webhook delivery is a no-op the second time through.
   const { data: updated } = await admin
     .from("orders")
-    .update({ payment_status: "paid", paid_at: new Date().toISOString(), felicity_transaction_ref: reference })
-    .eq("id", match.id)
+    .update({
+      payment_status: "paid",
+      paid_at: new Date().toISOString(),
+      felicity_delivery_reference: deliveryReference,
+      felicity_policy_reference: policyReference,
+      vendor_rebate_naira: rebateNaira,
+      settlement_error: data.error ?? null,
+    })
+    .eq("id", orderId)
     .eq("payment_status", "pending")
     .select("id")
     .single();
 
   if (!updated) return; // already processed by an earlier delivery of this event
 
-  await admin.from("payment_links").update({ status: "paid" }).eq("id", match.payment_link_id);
+  await admin.from("payment_links").update({ status: "paid" }).eq("id", order.payment_link_id);
 
-  const customerFullName = `${match.customer_first_name} ${match.customer_last_name}`;
-
-  if (match.payment_links.flow === "insured") {
+  if (deliveryReference) {
     try {
-      const gadgetProduct = await findGadgetCoverProduct();
-      const { policy } = await buyInsurance({
-        talent_ref: talentRef,
-        product_id: gadgetProduct.id,
-        device_type: match.payment_links.device_type,
-        device_value: Number(match.payment_links.amount_naira),
-        device_make: match.payment_links.device_make,
-        device_model: match.payment_links.device_model,
-        first_name: match.customer_first_name,
-        last_name: match.customer_last_name,
-        email: match.customer_email,
-        phone_number: toInternationalPhone(match.customer_phone),
-        gender: match.customer_gender,
-        date_of_birth: match.customer_date_of_birth,
-        address: match.delivery_address,
-        bought_for_self: true,
+      const { delivery } = await getDelivery(deliveryReference);
+      await admin.from("deliveries").insert({
+        order_id: orderId,
+        vendor_id: order.vendor_id,
+        felicity_delivery_reference: delivery.delivery_reference,
+        status: delivery.status,
+        fee_naira: delivery.fee_naira,
+        driver_name: delivery.driver_name,
+        driver_phone: delivery.driver_phone,
+        delivery_pin: delivery.delivery_pin,
       });
+    } catch (err) {
+      console.error("get_delivery failed after checkout_completed", orderId, err);
+    }
+  }
 
+  if (policyReference) {
+    try {
+      const { policy } = await getPolicy(policyReference);
       await admin.from("insurance_policies").insert({
-        order_id: match.id,
-        vendor_id: vendor.id,
+        order_id: orderId,
+        vendor_id: order.vendor_id,
         felicity_policy_reference: policy.policy_reference,
         felicity_policy_number: policy.policy_number,
         product_id: policy.product_id,
@@ -145,48 +143,29 @@ async function handleVaCredited(admin: any, data: Json) {
         policy_document_url: policy.policy_document_url,
       });
     } catch (err) {
-      console.error("buy_insurance failed for order", match.id, err);
+      console.error("get_policy failed after checkout_completed", orderId, err);
     }
   }
 
-  if (!vendor.pickup_address || !vendor.pickup_state || !match.delivery_address || !match.delivery_state) {
-    return; // nothing more we can safely do without both addresses
-  }
+  void vendorAmountNaira; // credited automatically by Felicity — nothing for us to do
+}
 
-  try {
-    const quote = await getDeliveryQuote({
-      pickup_address: vendor.pickup_address,
-      pickup_state: vendor.pickup_state,
-      dropoff_address: match.delivery_address,
-      dropoff_state: match.delivery_state,
-    });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleCheckoutFulfillmentFailed(admin: any, data: Json) {
+  const orderId: string | undefined = data.checkout_reference;
+  if (!orderId) return;
 
-    if (!quote.eligible) return;
-
-    const { delivery } = await createDelivery({
-      talent_ref: talentRef,
-      pickup_contact_name: vendor.business_name,
-      pickup_contact_phone: vendor.phone,
-      pickup_address: vendor.pickup_address,
-      pickup_state: vendor.pickup_state,
-      dropoff_contact_name: customerFullName,
-      dropoff_contact_phone: match.customer_phone,
-      dropoff_address: match.delivery_address,
-      dropoff_state: match.delivery_state,
-      item_description: match.payment_links.item_name,
-    });
-
-    await admin.from("deliveries").insert({
-      order_id: match.id,
-      vendor_id: vendor.id,
-      felicity_delivery_reference: delivery.delivery_reference,
-      status: delivery.status,
-      fee_naira: delivery.fee_naira,
-      delivery_pin: delivery.delivery_pin,
-    });
-  } catch (err) {
-    console.error("create_delivery failed for order", match.id, err);
-  }
+  await admin
+    .from("orders")
+    .update({
+      payment_status: "paid", // vendor was still paid per Felicity's guarantee
+      paid_at: new Date().toISOString(),
+      felicity_delivery_reference: data.delivery_reference ?? null,
+      felicity_policy_reference: data.policy_reference ?? null,
+      settlement_error: data.error ?? data.settlement_error ?? "Delivery or insurance failed after payment.",
+    })
+    .eq("id", orderId)
+    .eq("payment_status", "pending");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
