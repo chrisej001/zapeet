@@ -24,6 +24,9 @@ export async function createPaymentLink(
   const itemName = String(formData.get("item_name") ?? "").trim();
   const amountRaw = String(formData.get("amount_naira") ?? "").trim();
   const flow = String(formData.get("flow") ?? "");
+  const deviceType = String(formData.get("device_type") ?? "").trim();
+  const deviceMake = String(formData.get("device_make") ?? "").trim();
+  const deviceModel = String(formData.get("device_model") ?? "").trim();
 
   if (!itemName) {
     return { error: "Enter what you're selling." };
@@ -35,6 +38,9 @@ export async function createPaymentLink(
   if (flow !== "insured" && flow !== "pure_delivery") {
     return { error: "Pick a flow." };
   }
+  if (flow === "insured" && (!deviceType || !deviceMake || !deviceModel)) {
+    return { error: "Device type, make, and model are required for insured links." };
+  }
 
   // Slugs are globally unique; retry on the rare collision.
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -45,6 +51,9 @@ export async function createPaymentLink(
       flow,
       item_name: itemName,
       amount_naira: amount,
+      device_type: flow === "insured" ? deviceType : null,
+      device_make: flow === "insured" ? deviceMake : null,
+      device_model: flow === "insured" ? deviceModel : null,
     });
 
     if (!error) {

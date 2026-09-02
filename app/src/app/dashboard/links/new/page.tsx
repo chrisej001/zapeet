@@ -84,6 +84,59 @@ export default function NewLinkPage() {
             </div>
           </div>
 
+          {flow === "insured" && (
+            <div className="flex flex-col gap-4 rounded-[10px] border border-marigold/30 bg-marigold/5 p-4">
+              <p className="text-xs text-ink-60">
+                Needed to price the device insurance.
+              </p>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
+                  Device type
+                </span>
+                <select
+                  name="device_type"
+                  required
+                  defaultValue=""
+                  className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
+                >
+                  <option value="" disabled>
+                    Select…
+                  </option>
+                  <option value="Phone">Phone</option>
+                  <option value="Laptop">Laptop</option>
+                  <option value="Tablet">Tablet</option>
+                  <option value="POS">POS</option>
+                </select>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
+                    Make
+                  </span>
+                  <input
+                    name="device_make"
+                    type="text"
+                    required
+                    placeholder="Apple"
+                    className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
+                    Model
+                  </span>
+                  <input
+                    name="device_model"
+                    type="text"
+                    required
+                    placeholder="MacBook Air M2"
+                    className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+
           {state.error && (
             <div className="rounded-[10px] bg-terracotta/10 px-4 py-3 text-sm font-medium text-terracotta">
               {state.error}

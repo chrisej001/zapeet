@@ -21,7 +21,7 @@ export async function createOrder(
 
   const { data: link } = await admin
     .from("payment_links")
-    .select("id, vendor_id, amount_naira, status")
+    .select("id, vendor_id, amount_naira, status, flow")
     .eq("slug", slug)
     .single();
 
@@ -39,22 +39,40 @@ export async function createOrder(
     return { error: "This vendor hasn't finished setting up payments yet.", order: null };
   }
 
-  const customerName = String(formData.get("customer_name") ?? "").trim();
+  const customerFirstName = String(formData.get("customer_first_name") ?? "").trim();
+  const customerLastName = String(formData.get("customer_last_name") ?? "").trim();
+  const customerEmail = String(formData.get("customer_email") ?? "").trim();
   const customerPhone = String(formData.get("customer_phone") ?? "").trim();
   const deliveryAddress = String(formData.get("delivery_address") ?? "").trim();
   const deliveryState = String(formData.get("delivery_state") ?? "").trim();
+  const customerGender = String(formData.get("customer_gender") ?? "").trim();
+  const customerDateOfBirth = String(formData.get("customer_date_of_birth") ?? "").trim();
 
-  if (!customerName || !customerPhone || !deliveryAddress || !deliveryState) {
+  if (
+    !customerFirstName ||
+    !customerLastName ||
+    !customerEmail ||
+    !customerPhone ||
+    !deliveryAddress ||
+    !deliveryState
+  ) {
     return { error: "All fields are required — every order includes rider delivery.", order: null };
+  }
+  if (link.flow === "insured" && (!customerGender || !customerDateOfBirth)) {
+    return { error: "Gender and date of birth are required to issue device insurance.", order: null };
   }
 
   const { error: insertError } = await admin.from("orders").insert({
     payment_link_id: link.id,
     vendor_id: link.vendor_id,
-    customer_name: customerName,
+    customer_first_name: customerFirstName,
+    customer_last_name: customerLastName,
+    customer_email: customerEmail,
     customer_phone: customerPhone,
-    delivery_address: deliveryAddress || null,
-    delivery_state: deliveryState || null,
+    delivery_address: deliveryAddress,
+    delivery_state: deliveryState,
+    customer_gender: link.flow === "insured" ? customerGender : null,
+    customer_date_of_birth: link.flow === "insured" ? customerDateOfBirth : null,
   });
 
   if (insertError) {

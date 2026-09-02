@@ -1,7 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyFelicitySignature } from "@/lib/felicity/webhook";
-import { createDelivery, getDeliveryQuote } from "@/lib/felicity/client";
+import {
+  buyInsurance,
+  createDelivery,
+  findGadgetCoverProduct,
+  getDeliveryQuote,
+  toInternationalPhone,
+} from "@/lib/felicity/client";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = Record<string, any>;
@@ -81,7 +87,7 @@ async function handleVaCredited(admin: any, data: Json) {
   const { data: pendingOrders } = await admin
     .from("orders")
     .select(
-      "id, payment_link_id, customer_name, customer_phone, delivery_address, delivery_state, payment_links(flow, item_name, amount_naira)",
+      "id, payment_link_id, customer_first_name, customer_last_name, customer_email, customer_phone, customer_gender, customer_date_of_birth, delivery_address, delivery_state, payment_links(flow, item_name, amount_naira, device_type, device_make, device_model)",
     )
     .eq("vendor_id", vendor.id)
     .eq("payment_status", "pending")
@@ -106,12 +112,42 @@ async function handleVaCredited(admin: any, data: Json) {
 
   await admin.from("payment_links").update({ status: "paid" }).eq("id", match.payment_link_id);
 
-  // Insurance: the "insured" flow is supposed to buy a device-insurance
-  // policy here, but the insurance capability is currently disabled on
-  // this Felicity key and we don't yet know which product_id maps to
-  // device cover (the docs only show an unrelated health-plan example).
-  // Intentionally not calling buy_insurance with a guessed product_id —
-  // wire this up once the catalog is inspectable.
+  const customerFullName = `${match.customer_first_name} ${match.customer_last_name}`;
+
+  if (match.payment_links.flow === "insured") {
+    try {
+      const gadgetProduct = await findGadgetCoverProduct();
+      const { policy } = await buyInsurance({
+        talent_ref: talentRef,
+        product_id: gadgetProduct.id,
+        device_type: match.payment_links.device_type,
+        device_value: Number(match.payment_links.amount_naira),
+        device_make: match.payment_links.device_make,
+        device_model: match.payment_links.device_model,
+        first_name: match.customer_first_name,
+        last_name: match.customer_last_name,
+        email: match.customer_email,
+        phone_number: toInternationalPhone(match.customer_phone),
+        gender: match.customer_gender,
+        date_of_birth: match.customer_date_of_birth,
+        address: match.delivery_address,
+        bought_for_self: true,
+      });
+
+      await admin.from("insurance_policies").insert({
+        order_id: match.id,
+        vendor_id: vendor.id,
+        felicity_policy_reference: policy.policy_reference,
+        felicity_policy_number: policy.policy_number,
+        product_id: policy.product_id,
+        premium_naira: policy.premium_naira,
+        status: policy.status,
+        policy_document_url: policy.policy_document_url,
+      });
+    } catch (err) {
+      console.error("buy_insurance failed for order", match.id, err);
+    }
+  }
 
   if (!vendor.pickup_address || !vendor.pickup_state || !match.delivery_address || !match.delivery_state) {
     return; // nothing more we can safely do without both addresses
@@ -133,7 +169,7 @@ async function handleVaCredited(admin: any, data: Json) {
       pickup_contact_phone: vendor.phone,
       pickup_address: vendor.pickup_address,
       pickup_state: vendor.pickup_state,
-      dropoff_contact_name: match.customer_name,
+      dropoff_contact_name: customerFullName,
       dropoff_contact_phone: match.customer_phone,
       dropoff_address: match.delivery_address,
       dropoff_state: match.delivery_state,

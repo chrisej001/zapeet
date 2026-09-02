@@ -77,17 +77,57 @@ export function simulateFunding(talent_ref: string, amount_naira: number) {
 
 // ---- Insurance ----
 
+// Verified against the live catalog response (2026-09-02) — note this is
+// {status, message, data}, not the {success, products} shape the older
+// version of the docs implied.
 export type InsuranceProduct = {
-  product_id: string;
-  category: { name: string };
-  base_price: number;
-  [key: string]: unknown;
+  id: string;
+  product_name: string;
+  product_class: string;
+  provider: string;
+  product_description: string;
+  base_premium: number;
+  base_premium_naira: number;
+  duration_options: number[];
+  required_fields: string[];
+  currency: string;
+  premium_type?: "percentage" | "flat";
+  premium_rate_pct?: number;
+  pricing_note?: string;
 };
 
 export function listInsuranceProducts() {
-  return call<{ success: true; products: InsuranceProduct[] } & Record<string, unknown>>(
+  return call<{ status: true; message: string; data: InsuranceProduct[] }>(
     "list_insurance_products",
   );
+}
+
+/** Gadget Cover V2 — the percentage-of-device-value product. There can be
+ * more than one "Gadget" product (e.g. a flat-fee one); this picks the
+ * percentage-priced one specifically, live or sandbox, rather than
+ * hardcoding a product_id. */
+export async function findGadgetCoverProduct(): Promise<InsuranceProduct> {
+  const { data } = await listInsuranceProducts();
+  const product = data.find(
+    (p) => p.product_class === "Gadget" && p.premium_type === "percentage",
+  );
+  if (!product) {
+    throw new FelicityError(
+      404,
+      "gadget_product_not_found",
+      "No percentage-priced Gadget insurance product found in the catalog.",
+    );
+  }
+  return product;
+}
+
+/** Felicity's insurance provider wants Nigerian numbers as 234xxxxxxxxxx,
+ * not 0xxxxxxxxxx — confirmed as a genuine requirement in the docs. */
+export function toInternationalPhone(localPhone: string): string {
+  const digits = localPhone.replace(/\D/g, "");
+  if (digits.startsWith("234")) return digits;
+  if (digits.startsWith("0")) return "234" + digits.slice(1);
+  return "234" + digits;
 }
 
 export type Policy = {

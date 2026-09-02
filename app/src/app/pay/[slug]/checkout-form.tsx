@@ -6,7 +6,13 @@ import { CheckCircleIcon } from "./checkout-icons";
 
 const initialState: CreateOrderState = { error: null, order: null };
 
-export function CheckoutForm({ slug }: { slug: string }) {
+export function CheckoutForm({
+  slug,
+  flow,
+}: {
+  slug: string;
+  flow: "insured" | "pure_delivery";
+}) {
   const action = createOrder.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initialState);
 
@@ -35,10 +41,40 @@ export function CheckoutForm({ slug }: { slug: string }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-4 rounded-[20px] border border-ink/10 bg-white p-6">
-      <Field name="customer_name" label="Full name" placeholder="Ada Okoye" />
+      <div className="grid grid-cols-2 gap-3">
+        <Field name="customer_first_name" label="First name" placeholder="Ada" />
+        <Field name="customer_last_name" label="Last name" placeholder="Okoye" />
+      </div>
+      <Field name="customer_email" label="Email" type="email" placeholder="ada@example.com" />
       <Field name="customer_phone" label="Phone" type="tel" placeholder="08012345678" />
       <Field name="delivery_address" label="Delivery address" placeholder="14 Allen Avenue, Ikeja" />
       <Field name="delivery_state" label="State" placeholder="Lagos" />
+
+      {flow === "insured" && (
+        <div className="flex flex-col gap-4 rounded-[10px] border border-marigold/30 bg-marigold/5 p-4">
+          <p className="text-xs text-ink-60">Needed to issue your device insurance policy.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
+                Gender
+              </span>
+              <select
+                name="customer_gender"
+                required
+                defaultValue=""
+                className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
+              >
+                <option value="" disabled>
+                  Select…
+                </option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </label>
+            <Field name="customer_date_of_birth" label="Date of birth" type="date" />
+          </div>
+        </div>
+      )}
 
       {state.error && (
         <div className="rounded-[10px] bg-terracotta/10 px-4 py-3 text-sm font-medium text-terracotta">
