@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { LinkIcon } from "@/components/icons";
+import { LinkIcon, ShieldIcon } from "@/components/icons";
 import { SignOutButton } from "./sign-out-button";
 import { CopyLinkButton } from "./copy-link-button";
 
@@ -17,7 +17,7 @@ export default async function DashboardPage() {
 
   const { data: vendor } = await supabase
     .from("vendors")
-    .select("business_name, felicity_account_number, felicity_bank_name")
+    .select("business_name, felicity_account_number, felicity_bank_name, is_admin")
     .eq("id", user.id)
     .single();
 
@@ -38,7 +38,18 @@ export default async function DashboardPage() {
               </p>
             )}
           </div>
-          <SignOutButton />
+          <div className="flex items-center gap-3">
+            {vendor?.is_admin && (
+              <Link
+                href="/dashboard/admin"
+                title="Admin"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-ink/15 text-ink-60 hover:border-ink/40 hover:text-ink"
+              >
+                <ShieldIcon className="h-4.5 w-4.5" />
+              </Link>
+            )}
+            <SignOutButton />
+          </div>
         </div>
 
         <Link

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyFelicitySignature } from "@/lib/felicity/webhook";
-import { getDelivery, getPolicy } from "@/lib/felicity/client";
+import { getDelivery, getPolicy, send, RUBIES_MFB_BANK_CODE, FelicityError } from "@/lib/felicity/client";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = Record<string, any>;
@@ -148,6 +148,62 @@ async function handleCheckoutCompleted(admin: any, data: Json) {
   }
 
   void vendorAmountNaira; // credited automatically by Felicity — nothing for us to do
+
+  if (rebateNaira > 0) {
+    await payVendorRebate(admin, orderId, order.vendor_id, rebateNaira);
+  }
+}
+
+/** Pays the 2.5% insurance rebate out of Zapeet's own treasury balance —
+ * Felicity's auto-split only credits the vendor's goods amount, never a
+ * rebate, so this is money Zapeet funds itself (see treasury_account). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function payVendorRebate(admin: any, orderId: string, vendorId: string, rebateNaira: number) {
+  const { data: treasury } = await admin
+    .from("treasury_account")
+    .select("felicity_talent_ref, onboarded_at")
+    .not("onboarded_at", "is", null)
+    .limit(1)
+    .maybeSingle();
+
+  const { data: vendor } = await admin
+    .from("vendors")
+    .select("felicity_account_number, felicity_account_name")
+    .eq("id", vendorId)
+    .single();
+
+  if (!treasury?.felicity_talent_ref || !vendor?.felicity_account_number) {
+    await admin
+      .from("orders")
+      .update({ rebate_status: "failed", rebate_error: "Treasury account or vendor payout details missing." })
+      .eq("id", orderId);
+    return;
+  }
+
+  await admin.from("orders").update({ rebate_status: "pending" }).eq("id", orderId);
+
+  try {
+    const result = await send({
+      talent_ref: treasury.felicity_talent_ref,
+      amount_naira: rebateNaira,
+      account_number: vendor.felicity_account_number,
+      bank_code: RUBIES_MFB_BANK_CODE,
+      account_name: vendor.felicity_account_name ?? "Vendor",
+    });
+
+    await admin
+      .from("orders")
+      .update({
+        rebate_status: "paid",
+        rebate_payout_reference: result.reference,
+        rebate_paid_at: new Date().toISOString(),
+      })
+      .eq("id", orderId);
+  } catch (err) {
+    const message = err instanceof FelicityError ? err.message : "Rebate transfer failed.";
+    console.error("vendor rebate send failed", orderId, err);
+    await admin.from("orders").update({ rebate_status: "failed", rebate_error: message }).eq("id", orderId);
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

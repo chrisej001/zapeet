@@ -75,6 +75,26 @@ export function simulateFunding(talent_ref: string, amount_naira: number) {
   );
 }
 
+/** Every Felicity-issued VA we've seen (test mode) is hosted at Rubies MFB.
+ * Bank code confirmed live by sending a real transfer to a Felicity VA. */
+export const RUBIES_MFB_BANK_CODE = "090175";
+
+export function send(input: {
+  talent_ref: string;
+  amount_naira: number;
+  account_number: string;
+  bank_code: string;
+  account_name: string;
+}) {
+  return call<{
+    success: true;
+    reference: string;
+    fee_naira: number;
+    stamp_duty_naira: number;
+    new_balance_kobo: number;
+  }>("send", input);
+}
+
 // ---- Insurance ----
 
 // Verified against the live catalog response (2026-09-02) — note this is
