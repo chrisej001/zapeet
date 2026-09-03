@@ -13,7 +13,7 @@ export default function NewLinkPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-paper px-6 py-8">
       <div className="mx-auto w-full max-w-sm">
-        <Link href="/dashboard" className="text-sm font-medium text-ink-60">
+        <Link href="/dashboard/links" className="text-sm font-medium text-ink-60">
           ← Back
         </Link>
 

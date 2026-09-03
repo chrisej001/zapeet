@@ -57,7 +57,7 @@ export async function createPaymentLink(
     });
 
     if (!error) {
-      redirect("/dashboard");
+      redirect("/dashboard/links");
     }
     if (error.code !== "23505") {
       // not a unique-violation — no point retrying

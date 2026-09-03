@@ -95,6 +95,36 @@ export function send(input: {
   }>("send", input);
 }
 
+export type LedgerEntryType =
+  | "inbound_credit"
+  | "checkout_payout"
+  | "refund"
+  | "settlement"
+  | "outbound_transfer"
+  | "transfer_fee"
+  | "stamp_duty"
+  | "insurance_premium_debit"
+  | "delivery_fee_debit"
+  | "bill_payment"
+  | "bill_payment_fee"
+  | "payroll_disbursement"
+  | "payroll_fee";
+
+export type LedgerEntry = {
+  entry_type: LedgerEntryType;
+  amount_kobo: number;
+  meta: Record<string, unknown> | null;
+  created_at: string;
+};
+
+/** Verified live 2026-09-03 against a real talent — the talent's last 100
+ * ledger entries, most recent first. A single user-facing action (e.g. a
+ * transfer) can land as several rows sharing meta.reference (the transfer
+ * itself, plus a transfer_fee and stamp_duty row) — group by that in the UI. */
+export function getTransactions(talent_ref: string) {
+  return call<{ transactions: LedgerEntry[] }>("get_transactions", { talent_ref });
+}
+
 // ---- Insurance ----
 
 // Verified against the live catalog response (2026-09-02) — note this is
