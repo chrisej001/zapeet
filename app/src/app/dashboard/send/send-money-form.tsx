@@ -1,15 +1,42 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { sendMoney, type SendMoneyState } from "./actions";
-import { NIGERIAN_BANKS } from "@/lib/nigerian-banks";
+import { sendMoney, resolveAccountAction, type SendMoneyState } from "./actions";
 import { CheckIcon } from "@/components/icons";
 
 const initialState: SendMoneyState = { error: null, success: null };
 
-export function SendMoneyForm() {
+type Bank = { code: string; name: string };
+type Resolution = { status: "idle" } | { status: "checking" } | { status: "ok"; name: string } | { status: "error"; message: string };
+
+export function SendMoneyForm({ banks }: { banks: Bank[] }) {
   const [state, formAction, pending] = useActionState(sendMoney, initialState);
+  const [bankCode, setBankCode] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [resolution, setResolution] = useState<Resolution>({ status: "idle" });
+  const requestId = useRef(0);
+
+  useEffect(() => {
+    if (!bankCode || !/^\d{10}$/.test(accountNumber)) {
+      setResolution({ status: "idle" });
+      return;
+    }
+    const id = ++requestId.current;
+    setResolution({ status: "checking" });
+    const timer = setTimeout(async () => {
+      const result = await resolveAccountAction(accountNumber, bankCode);
+      if (requestId.current !== id) return; // superseded by a newer edit
+      if (result.ok) {
+        setResolution({ status: "ok", name: result.accountName });
+      } else if (result.error) {
+        setResolution({ status: "error", message: result.error });
+      } else {
+        setResolution({ status: "idle" });
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [bankCode, accountNumber]);
 
   if (state.success) {
     return (
@@ -49,6 +76,8 @@ export function SendMoneyForm() {
     );
   }
 
+  const canSubmit = resolution.status === "ok" && !pending;
+
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1.5">
@@ -70,13 +99,14 @@ export function SendMoneyForm() {
         <select
           name="bank_code"
           required
-          defaultValue=""
+          value={bankCode}
+          onChange={(e) => setBankCode(e.target.value)}
           className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
         >
           <option value="" disabled>
             Select…
           </option>
-          {NIGERIAN_BANKS.map((b) => (
+          {banks.map((b) => (
             <option key={b.code} value={b.code}>
               {b.name}
             </option>
@@ -93,23 +123,22 @@ export function SendMoneyForm() {
           inputMode="numeric"
           maxLength={10}
           placeholder="0123456789"
+          value={accountNumber}
+          onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
           className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
         />
       </label>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">Account name</span>
-        <input
-          name="account_name"
-          type="text"
-          required
-          placeholder="As it appears on the account"
-          className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
-        />
-      </label>
-      <p className="-mt-2 text-xs text-ink-60">
-        Double-check the account number and name — this isn&apos;t verified automatically before sending.
-      </p>
+      <div className="-mt-1 min-h-5 text-sm">
+        {resolution.status === "checking" && <span className="text-ink-60">Verifying account…</span>}
+        {resolution.status === "ok" && (
+          <span className="flex items-center gap-1.5 font-semibold text-marigold-ink">
+            <CheckIcon className="h-3.5 w-3.5" />
+            {resolution.name}
+          </span>
+        )}
+        {resolution.status === "error" && <span className="text-terracotta">{resolution.message}</span>}
+      </div>
 
       {state.error && (
         <div className="rounded-[10px] bg-terracotta/10 px-4 py-3 text-sm font-medium text-terracotta">
@@ -119,8 +148,8 @@ export function SendMoneyForm() {
 
       <button
         type="submit"
-        disabled={pending}
-        className="mt-2 w-full rounded-[10px] bg-ink py-3.5 text-sm font-semibold text-paper disabled:opacity-60"
+        disabled={!canSubmit}
+        className="mt-2 w-full rounded-[10px] bg-ink py-3.5 text-sm font-semibold text-paper disabled:opacity-40"
       >
         {pending ? "Sending…" : "Send money"}
       </button>

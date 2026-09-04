@@ -28,10 +28,20 @@ async function call<T>(action: string, payload: Record<string, unknown> = {}): P
   const json = await res.json();
 
   if (!res.ok || json.error) {
-    const code = json.error ?? "felicity_error";
+    // Most partner-api errors are just {error: "<human text>"} — only a
+    // handful (onboard_talent's KYC/VA failures, delivery/checkout
+    // provisioning) carry a separate {error: <code>, message: <text>} pair.
+    // Verified live 2026-09-04: resolve_account/list_banks/send's validation
+    // errors are all the single-field shape, and were silently swallowed
+    // into a generic "Felicity request failed" before this fallback.
+    const code = typeof json.error === "string" ? json.error : "felicity_error";
     const message = Array.isArray(json.message)
       ? json.message.join(", ")
-      : (json.message ?? "Felicity request failed");
+      : json.message != null
+        ? String(json.message)
+        : typeof json.error === "string"
+          ? json.error
+          : "Felicity request failed";
     throw new FelicityError(res.status, code, message);
   }
 
@@ -78,6 +88,27 @@ export function simulateFunding(talent_ref: string, amount_naira: number) {
 /** Every Felicity-issued VA we've seen (test mode) is hosted at Rubies MFB.
  * Bank code confirmed live by sending a real transfer to a Felicity VA. */
 export const RUBIES_MFB_BANK_CODE = "090175";
+
+export type Bank = { code: string; name: string };
+
+/** Verified live 2026-09-04: in test mode returns a small fixed sandbox
+ * fixture list (not real Rubies data); in live mode, Rubies' real bank list. */
+export function listBanks() {
+  return call<{ success: true; banks: Bank[] }>("list_banks");
+}
+
+export type ResolvedAccount = { account_name: string; account_number: string; bank_code: string };
+
+/** Verified live 2026-09-04: in test mode resolves any well-formed account
+ * number/known bank code to a deterministic "SANDBOX ACCOUNT ####" name (an
+ * all-zeros account number is a deterministic failure hook); in live mode,
+ * a real Rubies name-enquiry. */
+export function resolveAccount(account_number: string, bank_code: string) {
+  return call<{ success: true; account: ResolvedAccount }>("resolve_account", {
+    account_number,
+    bank_code,
+  });
+}
 
 export function send(input: {
   talent_ref: string;
