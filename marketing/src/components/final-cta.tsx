@@ -12,7 +12,7 @@ export function FinalCta() {
         </p>
         <div className="mt-2 flex flex-wrap items-center justify-center gap-6">
           <MotionLink
-            href="#"
+            href="https://zapeet-app.vercel.app/auth?mode=signup"
             className="rounded-[10px] bg-marigold px-7 py-4 text-base font-semibold text-ink"
           >
             Generate your first link

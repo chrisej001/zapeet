@@ -75,7 +75,7 @@ export function Hero() {
             className="mt-1 flex flex-wrap items-center gap-4"
           >
             <MotionLink
-              href="#"
+              href="https://zapeet-app.vercel.app/auth?mode=signup"
               className="rounded-[10px] bg-ink px-7 py-4 text-base font-semibold text-paper"
             >
               Generate your first link
