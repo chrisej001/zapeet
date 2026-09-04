@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createOrder, type CreateOrderState } from "./actions";
+import { createOrder, simulatePayment, type CreateOrderState } from "./actions";
 import { CheckCircleIcon } from "./checkout-icons";
 
 const initialState: CreateOrderState = { error: null, order: null };
@@ -10,14 +10,30 @@ export function CheckoutForm({
   slug,
   itemName,
   flow,
+  testMode,
 }: {
   slug: string;
   itemName: string;
   flow: "insured" | "pure_delivery";
+  testMode: boolean;
 }) {
   const action = createOrder.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initialState);
   const [confirmedToPay, setConfirmedToPay] = useState(false);
+  const [simulateState, setSimulateState] = useState<"idle" | "pending" | "done" | "error">("idle");
+  const [simulateError, setSimulateError] = useState<string | null>(null);
+
+  async function handleSimulate(orderId: string) {
+    setSimulateState("pending");
+    setSimulateError(null);
+    const result = await simulatePayment(orderId);
+    if (result.ok) {
+      setSimulateState("done");
+    } else {
+      setSimulateState("error");
+      setSimulateError(result.error);
+    }
+  }
 
   if (state.order) {
     const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
@@ -67,6 +83,32 @@ export function CheckoutForm({
           <Row label="Bank" value={state.order.bankName} />
           <Row label="Account name" value={state.order.accountName} />
         </div>
+
+        {testMode && (
+          <div className="rounded-[14px] border border-dashed border-ink/20 p-4">
+            <p className="mb-3 text-xs font-semibold text-ink-60">
+              TEST MODE — simulate the transfer instead of sending real money
+            </p>
+            {simulateState === "done" ? (
+              <p className="text-sm font-semibold text-marigold-ink">
+                ✓ Payment simulated — delivery and insurance are processing.
+              </p>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleSimulate(state.order!.orderId)}
+                  disabled={simulateState === "pending"}
+                  className="w-full rounded-[10px] border border-ink/25 py-3 text-sm font-semibold text-ink disabled:opacity-60"
+                >
+                  {simulateState === "pending" ? "Simulating…" : "Simulate payment"}
+                </button>
+                {simulateState === "error" && (
+                  <p className="mt-2 text-xs text-terracotta">{simulateError}</p>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     );
   }

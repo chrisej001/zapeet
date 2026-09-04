@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isPlausibleDateOfBirth } from "@/lib/validate-dob";
 import {
   createCheckout,
+  simulateCheckoutFunding,
   findGadgetCoverProduct,
   FelicityError,
   toInternationalPhone,
@@ -12,6 +13,7 @@ import {
 export type CreateOrderState = {
   error: string | null;
   order: {
+    orderId: string;
     accountNumber: string;
     accountName: string;
     bankName: string;
@@ -161,6 +163,7 @@ export async function createOrder(
   return {
     error: null,
     order: {
+      orderId,
       accountNumber: checkout.account_number,
       accountName: checkout.account_name,
       bankName: checkout.bank_name,
@@ -170,4 +173,21 @@ export async function createOrder(
       totalAmountNaira: checkout.total_amount_naira,
     },
   };
+}
+
+/** Test-mode-only "pay now" shortcut, the same simulate_checkout_funding
+ * action used to verify the full settlement chain end-to-end — Felicity
+ * itself refuses this with simulate_only_in_test_mode outside test mode, so
+ * it's safe even if the button were ever shown by mistake. Gated in the UI
+ * by FELICITY_MODE so it never renders in production. */
+export async function simulatePayment(
+  orderId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await simulateCheckoutFunding(orderId);
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof FelicityError ? err.message : "Simulated payment failed.";
+    return { ok: false, error: message };
+  }
 }
