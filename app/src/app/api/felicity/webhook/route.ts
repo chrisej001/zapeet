@@ -1,7 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyFelicitySignature } from "@/lib/felicity/webhook";
-import { getDelivery, getPolicy, send, RUBIES_MFB_BANK_CODE, FelicityError } from "@/lib/felicity/client";
+import {
+  getDelivery,
+  getPolicy,
+  send,
+  resolveAccount,
+  RUBIES_MFB_BANK_CODE,
+  FelicityError,
+} from "@/lib/felicity/client";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = Record<string, any>;
@@ -182,13 +189,29 @@ async function payVendorRebate(admin: any, orderId: string, vendorId: string, re
 
   await admin.from("orders").update({ rebate_status: "pending" }).eq("id", orderId);
 
+  // Every Felicity-issued VA lives at Rubies MFB, so there's no bank to pick
+  // here — but resolve the vendor's account the same way the vendor-facing
+  // send-money flow does, so a stale/renamed felicity_account_name never
+  // gets used blindly and a bad account is caught with a clear reason
+  // instead of an opaque transfer failure.
+  let accountName: string;
+  try {
+    const { account } = await resolveAccount(vendor.felicity_account_number, RUBIES_MFB_BANK_CODE);
+    accountName = account.account_name;
+  } catch (err) {
+    const message = err instanceof FelicityError ? err.message : "Could not verify vendor account.";
+    console.error("vendor rebate account resolve failed", orderId, err);
+    await admin.from("orders").update({ rebate_status: "failed", rebate_error: message }).eq("id", orderId);
+    return;
+  }
+
   try {
     const result = await send({
       talent_ref: treasury.felicity_talent_ref,
       amount_naira: rebateNaira,
       account_number: vendor.felicity_account_number,
       bank_code: RUBIES_MFB_BANK_CODE,
-      account_name: vendor.felicity_account_name ?? "Vendor",
+      account_name: accountName,
     });
 
     await admin
