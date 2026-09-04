@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { LogoMark } from "@/components/logo";
 import { createClient } from "@/lib/supabase/client";
@@ -9,8 +9,17 @@ import { createClient } from "@/lib/supabase/client";
 type Mode = "sign_in" | "sign_up";
 
 export default function AuthPage() {
+  return (
+    <Suspense fallback={null}>
+      <AuthForm />
+    </Suspense>
+  );
+}
+
+function AuthForm() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("sign_in");
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<Mode>(searchParams.get("mode") === "signup" ? "sign_up" : "sign_in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");

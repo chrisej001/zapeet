@@ -30,14 +30,14 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-4">
           <MotionLink
-            href="#"
+            href="https://zapeet-app.vercel.app/auth"
             lift={false}
             className="hidden rounded-[10px] border border-ink/25 px-6 py-3 text-sm font-semibold text-ink sm:inline-flex"
           >
             Log in
           </MotionLink>
           <MotionLink
-            href="#"
+            href="https://zapeet-app.vercel.app/auth?mode=signup"
             className="rounded-[10px] bg-ink px-6 py-3 text-sm font-semibold text-paper"
           >
             Get started
