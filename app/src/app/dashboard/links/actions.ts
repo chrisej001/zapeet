@@ -27,6 +27,12 @@ export async function createPaymentLink(
   const deviceType = String(formData.get("device_type") ?? "").trim();
   const deviceMake = String(formData.get("device_make") ?? "").trim();
   const deviceModel = String(formData.get("device_model") ?? "").trim();
+  // All optional — Gadget Cover V2 accepts these beyond the required set.
+  const deviceImei = String(formData.get("device_imei") ?? "").trim();
+  const deviceSerialNumber = String(formData.get("device_serial_number") ?? "").trim();
+  const deviceColor = String(formData.get("device_color") ?? "").trim();
+  const devicePurchaseDate = String(formData.get("device_purchase_date") ?? "").trim();
+  const deviceImageUrl = String(formData.get("device_image_url") ?? "").trim();
 
   if (!itemName) {
     return { error: "Enter what you're selling." };
@@ -54,6 +60,11 @@ export async function createPaymentLink(
       device_type: flow === "insured" ? deviceType : null,
       device_make: flow === "insured" ? deviceMake : null,
       device_model: flow === "insured" ? deviceModel : null,
+      device_imei: flow === "insured" && deviceImei ? deviceImei : null,
+      device_serial_number: flow === "insured" && deviceSerialNumber ? deviceSerialNumber : null,
+      device_color: flow === "insured" && deviceColor ? deviceColor : null,
+      device_purchase_date: flow === "insured" && devicePurchaseDate ? devicePurchaseDate : null,
+      device_image_url: flow === "insured" && deviceImageUrl ? deviceImageUrl : null,
     });
 
     if (!error) {

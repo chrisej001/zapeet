@@ -35,7 +35,7 @@ export async function createOrder(
   const { data: link } = await admin
     .from("payment_links")
     .select(
-      "id, vendor_id, amount_naira, status, expires_at, flow, item_name, device_type, device_make, device_model",
+      "id, vendor_id, amount_naira, status, expires_at, flow, item_name, device_type, device_make, device_model, device_imei, device_serial_number, device_color, device_purchase_date, device_image_url",
     )
     .eq("slug", slug)
     .single();
@@ -116,6 +116,11 @@ export async function createOrder(
         email: customerEmail,
         phone: toInternationalPhone(customerPhone),
         bought_for_self: true,
+        device_color: link.device_color ?? undefined,
+        serial_number: link.device_serial_number ?? undefined,
+        imei: link.device_imei ?? undefined,
+        device_purchase_date: link.device_purchase_date ?? undefined,
+        image_url: link.device_image_url ?? undefined,
       };
     } catch {
       return { error: "Insurance isn't available right now — please try again shortly.", order: null };

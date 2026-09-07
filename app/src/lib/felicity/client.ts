@@ -235,6 +235,22 @@ export function getPolicy(policy_reference: string) {
   return call<{ success: true; policy: Policy }>("get_policy", { policy_reference });
 }
 
+export type Claim = {
+  claim_reference: string;
+  status: string | null;
+  amount_naira: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+/** Read-only — the insurer has no claim-filing API, so this only tracks a
+ * claim the customer filed directly with them, never creates one. Verified
+ * live 2026-09-07: test mode always returns an empty array by design
+ * (MyCover isn't reachable in sandbox); real data only appears in live mode. */
+export function listClaims(policy_reference: string) {
+  return call<{ claims: Claim[] }>("list_claims", { policy_reference });
+}
+
 // ---- Delivery ----
 
 export function getDeliveryQuote(input: {
@@ -330,6 +346,14 @@ export function createCheckout(input: {
     first_name: string;
     last_name: string;
     email: string;
+    // Optional — confirmed against Felicity's real buildGadgetBuyBody source
+    // (not just the catalog's required_fields), all describing the specific
+    // physical unit rather than the customer.
+    device_color?: string;
+    serial_number?: string;
+    imei?: string;
+    device_purchase_date?: string;
+    image_url?: string;
     [extra: string]: unknown;
   };
 }) {

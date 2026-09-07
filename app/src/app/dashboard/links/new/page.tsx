@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { createPaymentLink, type CreateLinkState } from "../actions";
+import { DevicePhotoInput } from "./device-photo-input";
 
 const initialState: CreateLinkState = { error: null };
 
@@ -134,6 +135,59 @@ export default function NewLinkPage() {
                   />
                 </label>
               </div>
+
+              <div className="h-px bg-marigold/20" />
+              <p className="-mb-1 text-xs text-ink-60">
+                Optional, but strengthens the policy and speeds up any future claim.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">IMEI</span>
+                  <input
+                    name="device_imei"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="356938035643809"
+                    className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
+                    Serial number
+                  </span>
+                  <input
+                    name="device_serial_number"
+                    type="text"
+                    placeholder="C02X1234ABCD"
+                    className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">Color</span>
+                  <input
+                    name="device_color"
+                    type="text"
+                    placeholder="Space Gray"
+                    className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
+                    Purchase date
+                  </span>
+                  <input
+                    name="device_purchase_date"
+                    type="date"
+                    max={new Date().toISOString().slice(0, 10)}
+                    className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
+                  />
+                </label>
+              </div>
+
+              <DevicePhotoInput />
             </div>
           )}
 

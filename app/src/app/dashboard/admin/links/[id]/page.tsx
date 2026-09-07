@@ -36,6 +36,10 @@ export default async function AdminLinkDetailPage({ params }: { params: Promise<
           <DetailRow label="Flow" value={link.flow === "insured" ? "Insured" : "Pure delivery"} />
           <DetailRow label="Status" value={LINK_STATUS_LABEL[effectiveLinkStatus(link)]} />
           {link.device_type && <DetailRow label="Device" value={`${link.device_make ?? ""} ${link.device_model ?? ""} (${link.device_type})`} />}
+          {link.device_imei && <DetailRow label="IMEI" value={link.device_imei} />}
+          {link.device_serial_number && <DetailRow label="Serial number" value={link.device_serial_number} />}
+          {link.device_color && <DetailRow label="Color" value={link.device_color} />}
+          {link.device_purchase_date && <DetailRow label="Purchased" value={link.device_purchase_date} />}
           <DetailRow label="Slug" value={`/pay/${link.slug}`} />
           <DetailRow label="Created" value={fmtDateTime(link.created_at)} />
           <DetailRow label="Expires" value={fmtDateTime(link.expires_at)} />
@@ -51,6 +55,13 @@ export default async function AdminLinkDetailPage({ params }: { params: Promise<
             </>
           )}
         </div>
+
+        {link.device_image_url && (
+          <div className="mb-6 overflow-hidden rounded-[16px] border border-ink/10 bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={link.device_image_url} alt={link.item_name} className="h-48 w-full object-cover" />
+          </div>
+        )}
 
         <h2 className="mb-3 text-sm font-semibold text-ink">Orders ({orders?.length ?? 0})</h2>
         <div className="flex flex-col gap-3">
