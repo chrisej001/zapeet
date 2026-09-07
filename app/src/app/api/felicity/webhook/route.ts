@@ -280,7 +280,7 @@ async function handlePolicyEvent(admin: any, data: Json, eventType: string) {
       const itemName =
         (order.payment_links as unknown as { item_name: string } | null)?.item_name ?? "your device";
       try {
-        await sendPolicyEmail({
+        const result = await sendPolicyEmail({
           to: order.customer_email,
           firstName: order.customer_first_name ?? "there",
           itemName,
@@ -288,10 +288,35 @@ async function handlePolicyEvent(admin: any, data: Json, eventType: string) {
           premiumNaira: Number(policy.premium_naira ?? 0),
           documentUrl: policyDocumentUrl,
         });
+        // TEMP diagnostic — no way to read Vercel function logs on this
+        // tier, so record the outcome somewhere we can query directly.
+        // Remove once the webhook-path send is confirmed reliable.
+        await admin.from("felicity_webhook_events").insert({
+          event_type: "debug.policy_email_sent",
+          payload: { policyReference, to: order.customer_email, resendId: result.id },
+        });
       } catch (err) {
         console.error("policy email failed", policyReference, err);
+        await admin.from("felicity_webhook_events").insert({
+          event_type: "debug.policy_email_failed",
+          payload: {
+            policyReference,
+            to: order.customer_email,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
       }
+    } else {
+      await admin.from("felicity_webhook_events").insert({
+        event_type: "debug.policy_email_skipped",
+        payload: { policyReference, reason: "no customer_email on order", orderId: policy.order_id },
+      });
     }
+  } else {
+    await admin.from("felicity_webhook_events").insert({
+      event_type: "debug.policy_email_gate_failed",
+      payload: { policyReference, eventType, policyDocumentUrl, orderId: policy?.order_id ?? null },
+    });
   }
 }
 
