@@ -9,6 +9,7 @@ import {
   RUBIES_MFB_BANK_CODE,
   FelicityError,
 } from "@/lib/felicity/client";
+import { sendPolicyEmail } from "@/lib/resend";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = Record<string, any>;
@@ -252,14 +253,46 @@ async function handlePolicyEvent(admin: any, data: Json, eventType: string) {
   const policyReference: string | undefined = data.policy_reference;
   if (!policyReference) return;
 
-  await admin
+  const policyDocumentUrl: string | null = data.policy_document_url ?? null;
+
+  const { data: policy } = await admin
     .from("insurance_policies")
     .update({
       status: eventType === "talent.policy_failed" ? "failed" : (data.status ?? "active"),
-      policy_document_url: data.policy_document_url ?? null,
+      policy_document_url: policyDocumentUrl,
       felicity_policy_number: data.policy_number ?? null,
     })
-    .eq("felicity_policy_reference", policyReference);
+    .eq("felicity_policy_reference", policyReference)
+    .select("order_id, felicity_policy_number, premium_naira")
+    .maybeSingle();
+
+  // Email the customer their policy document once it exists — gated on the
+  // event (not internal status, which can still read "pending" here) and the
+  // doc actually being present.
+  if (eventType === "talent.policy_issued" && policyDocumentUrl && policy?.order_id) {
+    const { data: order } = await admin
+      .from("orders")
+      .select("customer_email, customer_first_name, payment_links(item_name)")
+      .eq("id", policy.order_id)
+      .maybeSingle();
+
+    if (order?.customer_email) {
+      const itemName =
+        (order.payment_links as unknown as { item_name: string } | null)?.item_name ?? "your device";
+      try {
+        await sendPolicyEmail({
+          to: order.customer_email,
+          firstName: order.customer_first_name ?? "there",
+          itemName,
+          policyNumber: policy.felicity_policy_number ?? data.policy_number ?? "",
+          premiumNaira: Number(policy.premium_naira ?? 0),
+          documentUrl: policyDocumentUrl,
+        });
+      } catch (err) {
+        console.error("policy email failed", policyReference, err);
+      }
+    }
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
