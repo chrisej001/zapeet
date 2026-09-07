@@ -88,7 +88,9 @@ async function handleCheckoutCompleted(admin: any, data: Json) {
 
   const { data: order } = await admin
     .from("orders")
-    .select("id, vendor_id, payment_link_id, insurance_amount_naira, payment_links(flow)")
+    .select(
+      "id, vendor_id, payment_link_id, insurance_amount_naira, customer_email, customer_first_name, payment_links(flow, item_name)",
+    )
     .eq("id", orderId)
     .single();
   if (!order) return;
@@ -150,6 +152,29 @@ async function handleCheckoutCompleted(admin: any, data: Json) {
         status: policy.status,
         policy_document_url: policy.policy_document_url,
       });
+
+      // Email the policy document right here, not from the policy_issued
+      // webhook — confirmed live 2026-09-07 that policy_issued consistently
+      // arrives BEFORE checkout_completed, so the insurance_policies row
+      // this handler just inserted doesn't exist yet when that earlier
+      // event is processed. This path has guaranteed order/customer context
+      // and the freshly-fetched policy in hand, so it's the reliable place.
+      if (policy.policy_document_url && order.customer_email) {
+        const itemName =
+          (order.payment_links as unknown as { item_name: string } | null)?.item_name ?? "your device";
+        try {
+          await sendPolicyEmail({
+            to: order.customer_email,
+            firstName: order.customer_first_name ?? "there",
+            itemName,
+            policyNumber: policy.policy_number,
+            premiumNaira: Number(policy.premium_naira ?? 0),
+            documentUrl: policy.policy_document_url,
+          });
+        } catch (err) {
+          console.error("policy email failed", policyReference, err);
+        }
+      }
     } catch (err) {
       console.error("get_policy failed after checkout_completed", orderId, err);
     }
@@ -248,76 +273,24 @@ async function handleCheckoutFulfillmentFailed(admin: any, data: Json) {
     .eq("payment_status", "pending");
 }
 
+// Pure status sync — the policy email itself is sent from
+// handleCheckoutCompleted, which has guaranteed order/customer context and
+// runs after this event in practice (talent.policy_issued consistently
+// arrives before talent.checkout_completed, before this row even exists —
+// confirmed live 2026-09-07 via a diagnostic that's since been removed).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handlePolicyEvent(admin: any, data: Json, eventType: string) {
   const policyReference: string | undefined = data.policy_reference;
   if (!policyReference) return;
 
-  const policyDocumentUrl: string | null = data.policy_document_url ?? null;
-
-  const { data: policy } = await admin
+  await admin
     .from("insurance_policies")
     .update({
       status: eventType === "talent.policy_failed" ? "failed" : (data.status ?? "active"),
-      policy_document_url: policyDocumentUrl,
+      policy_document_url: data.policy_document_url ?? null,
       felicity_policy_number: data.policy_number ?? null,
     })
-    .eq("felicity_policy_reference", policyReference)
-    .select("order_id, felicity_policy_number, premium_naira")
-    .maybeSingle();
-
-  // Email the customer their policy document once it exists — gated on the
-  // event (not internal status, which can still read "pending" here) and the
-  // doc actually being present.
-  if (eventType === "talent.policy_issued" && policyDocumentUrl && policy?.order_id) {
-    const { data: order } = await admin
-      .from("orders")
-      .select("customer_email, customer_first_name, payment_links(item_name)")
-      .eq("id", policy.order_id)
-      .maybeSingle();
-
-    if (order?.customer_email) {
-      const itemName =
-        (order.payment_links as unknown as { item_name: string } | null)?.item_name ?? "your device";
-      try {
-        const result = await sendPolicyEmail({
-          to: order.customer_email,
-          firstName: order.customer_first_name ?? "there",
-          itemName,
-          policyNumber: policy.felicity_policy_number ?? data.policy_number ?? "",
-          premiumNaira: Number(policy.premium_naira ?? 0),
-          documentUrl: policyDocumentUrl,
-        });
-        // TEMP diagnostic — no way to read Vercel function logs on this
-        // tier, so record the outcome somewhere we can query directly.
-        // Remove once the webhook-path send is confirmed reliable.
-        await admin.from("felicity_webhook_events").insert({
-          event_type: "debug.policy_email_sent",
-          payload: { policyReference, to: order.customer_email, resendId: result.id },
-        });
-      } catch (err) {
-        console.error("policy email failed", policyReference, err);
-        await admin.from("felicity_webhook_events").insert({
-          event_type: "debug.policy_email_failed",
-          payload: {
-            policyReference,
-            to: order.customer_email,
-            error: err instanceof Error ? err.message : String(err),
-          },
-        });
-      }
-    } else {
-      await admin.from("felicity_webhook_events").insert({
-        event_type: "debug.policy_email_skipped",
-        payload: { policyReference, reason: "no customer_email on order", orderId: policy.order_id },
-      });
-    }
-  } else {
-    await admin.from("felicity_webhook_events").insert({
-      event_type: "debug.policy_email_gate_failed",
-      payload: { policyReference, eventType, policyDocumentUrl, orderId: policy?.order_id ?? null },
-    });
-  }
+    .eq("felicity_policy_reference", policyReference);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
