@@ -9,6 +9,7 @@ import {
   FelicityError,
   toInternationalPhone,
 } from "@/lib/felicity/client";
+import { isLinkUsable } from "@/lib/payment-link-status";
 
 export type CreateOrderState = {
   error: string | null;
@@ -33,11 +34,13 @@ export async function createOrder(
 
   const { data: link } = await admin
     .from("payment_links")
-    .select("id, vendor_id, amount_naira, status, flow, item_name, device_type, device_make, device_model")
+    .select(
+      "id, vendor_id, amount_naira, status, expires_at, flow, item_name, device_type, device_make, device_model",
+    )
     .eq("slug", slug)
     .single();
 
-  if (!link || link.status !== "active") {
+  if (!link || !isLinkUsable(link)) {
     return { error: "This payment link is no longer available.", order: null };
   }
 

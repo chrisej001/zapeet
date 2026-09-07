@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CheckIcon } from "@/components/icons";
 
-export function CopyLinkButton({ slug }: { slug: string }) {
+export function CopyLinkButton({ slug, disabled }: { slug: string; disabled?: boolean }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -11,6 +11,14 @@ export function CopyLinkButton({ slug }: { slug: string }) {
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
+  }
+
+  if (disabled) {
+    return (
+      <span className="flex items-center gap-1.5 rounded-[8px] border border-ink/10 px-3 py-1.5 text-xs font-semibold text-ink-60/60">
+        Not copiable
+      </span>
+    );
   }
 
   return (

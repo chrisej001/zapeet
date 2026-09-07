@@ -4,6 +4,14 @@ import { createClient } from "@/lib/supabase/server";
 import { LinkIcon } from "@/components/icons";
 import { CopyLinkButton } from "../copy-link-button";
 import { BottomNav } from "../bottom-nav";
+import { effectiveLinkStatus, isLinkUsable, LINK_STATUS_LABEL } from "@/lib/payment-link-status";
+
+const STATUS_STYLE: Record<string, string> = {
+  active: "bg-ink/5 text-ink-60",
+  paid: "bg-marigold/15 text-marigold-ink",
+  expired: "bg-terracotta/15 text-terracotta",
+  cancelled: "bg-ink/5 text-ink-60",
+};
 
 export default async function LinksPage() {
   const supabase = await createClient();
@@ -17,7 +25,7 @@ export default async function LinksPage() {
 
   const { data: links } = await supabase
     .from("payment_links")
-    .select("id, slug, item_name, amount_naira, flow, status, created_at")
+    .select("id, slug, item_name, amount_naira, flow, status, expires_at, created_at")
     .order("created_at", { ascending: false });
 
   return (
@@ -39,38 +47,49 @@ export default async function LinksPage() {
             </div>
           )}
 
-          {links?.map((link) => (
-            <div
-              key={link.id}
-              className="flex flex-col gap-3 rounded-[16px] border border-ink/10 bg-white p-5"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-ink">{link.item_name}</p>
-                  <p className="mt-0.5 text-lg font-extrabold text-ink">
-                    ₦{Number(link.amount_naira).toLocaleString("en-NG")}
-                  </p>
+          {links?.map((link) => {
+            const status = effectiveLinkStatus(link);
+            const usable = isLinkUsable(link);
+            return (
+              <div
+                key={link.id}
+                className={`flex flex-col gap-3 rounded-[16px] border border-ink/10 bg-white p-5 ${
+                  usable ? "" : "opacity-70"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-ink">{link.item_name}</p>
+                    <p className="mt-0.5 text-lg font-extrabold text-ink">
+                      ₦{Number(link.amount_naira).toLocaleString("en-NG")}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <span
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                        link.flow === "insured"
+                          ? "bg-marigold/15 text-marigold-ink"
+                          : "bg-terracotta/15 text-terracotta"
+                      }`}
+                    >
+                      {link.flow === "insured" ? "Insured" : "Pure delivery"}
+                    </span>
+                    <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${STATUS_STYLE[status]}`}>
+                      {LINK_STATUS_LABEL[status]}
+                    </span>
+                  </div>
                 </div>
-                <span
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                    link.flow === "insured"
-                      ? "bg-marigold/15 text-marigold-ink"
-                      : "bg-terracotta/15 text-terracotta"
-                  }`}
-                >
-                  {link.flow === "insured" ? "Insured" : "Pure delivery"}
-                </span>
-              </div>
 
-              <div className="flex items-center justify-between gap-3 border-t border-ink/10 pt-3">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-ink-60">
-                  <LinkIcon className="h-3.5 w-3.5" />
-                  /pay/{link.slug}
+                <div className="flex items-center justify-between gap-3 border-t border-ink/10 pt-3">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-ink-60">
+                    <LinkIcon className="h-3.5 w-3.5" />
+                    /pay/{link.slug}
+                  </div>
+                  <CopyLinkButton slug={link.slug} disabled={!usable} />
                 </div>
-                <CopyLinkButton slug={link.slug} />
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       <BottomNav />

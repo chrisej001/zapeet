@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminPage, fmtNaira, fmtDateTime, statusColor } from "../../require-admin-page";
 import { DetailRow, ListRow } from "../../list-row";
+import { effectiveLinkStatus, LINK_STATUS_LABEL } from "@/lib/payment-link-status";
 
 export default async function AdminLinkDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -33,10 +34,11 @@ export default async function AdminLinkDetailPage({ params }: { params: Promise<
         <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5">
           <DetailRow label="Price" value={fmtNaira(link.amount_naira)} />
           <DetailRow label="Flow" value={link.flow === "insured" ? "Insured" : "Pure delivery"} />
-          <DetailRow label="Status" value={link.status} />
+          <DetailRow label="Status" value={LINK_STATUS_LABEL[effectiveLinkStatus(link)]} />
           {link.device_type && <DetailRow label="Device" value={`${link.device_make ?? ""} ${link.device_model ?? ""} (${link.device_type})`} />}
           <DetailRow label="Slug" value={`/pay/${link.slug}`} />
           <DetailRow label="Created" value={fmtDateTime(link.created_at)} />
+          <DetailRow label="Expires" value={fmtDateTime(link.expires_at)} />
           {vendor && (
             <>
               <div className="my-2 h-px bg-ink/10" />

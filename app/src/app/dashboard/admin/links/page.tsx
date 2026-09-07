@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { requireAdminPage, fmtNaira, fmtDateTime, statusColor } from "../require-admin-page";
 import { ListRow } from "../list-row";
+import { effectiveLinkStatus, LINK_STATUS_LABEL } from "@/lib/payment-link-status";
 
 export default async function AdminLinksPage() {
   const { admin } = await requireAdminPage();
 
   const { data: links } = await admin
     .from("payment_links")
-    .select("id, item_name, amount_naira, flow, status, created_at, vendors(business_name)")
+    .select("id, item_name, amount_naira, flow, status, expires_at, created_at, vendors(business_name)")
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -25,17 +26,20 @@ export default async function AdminLinksPage() {
               No links yet.
             </div>
           )}
-          {links?.map((l) => (
-            <ListRow
-              key={l.id}
-              href={`/dashboard/admin/links/${l.id}`}
-              title={l.item_name}
-              subtitle={`${(l.vendors as unknown as { business_name: string } | null)?.business_name ?? "—"} · ${fmtDateTime(l.created_at)}`}
-              status={l.status}
-              statusClass={statusColor(l.status)}
-              right={fmtNaira(l.amount_naira)}
-            />
-          ))}
+          {links?.map((l) => {
+            const status = effectiveLinkStatus(l);
+            return (
+              <ListRow
+                key={l.id}
+                href={`/dashboard/admin/links/${l.id}`}
+                title={l.item_name}
+                subtitle={`${(l.vendors as unknown as { business_name: string } | null)?.business_name ?? "—"} · ${fmtDateTime(l.created_at)}`}
+                status={LINK_STATUS_LABEL[status]}
+                statusClass={statusColor(status)}
+                right={fmtNaira(l.amount_naira)}
+              />
+            );
+          })}
         </div>
       </div>
     </div>

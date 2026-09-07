@@ -1,6 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LogoMark } from "@/components/logo";
 import { CheckoutForm } from "./checkout-form";
+import { effectiveLinkStatus, isLinkUsable } from "@/lib/payment-link-status";
+
+const UNAVAILABLE_MESSAGE: Record<string, string> = {
+  paid: "This item has already been paid for.",
+  expired: "This payment link has expired — ask the vendor for a new one.",
+  cancelled: "This payment link is no longer available.",
+};
 
 export default async function CheckoutPage({
   params,
@@ -12,9 +19,11 @@ export default async function CheckoutPage({
 
   const { data: link } = await admin
     .from("payment_links")
-    .select("item_name, amount_naira, flow, status, vendor:vendors(business_name)")
+    .select("item_name, amount_naira, flow, status, expires_at, vendor:vendors(business_name)")
     .eq("slug", slug)
     .single();
+
+  const usable = link ? isLinkUsable(link) : false;
 
   return (
     <div className="flex min-h-dvh flex-col bg-paper px-6 py-10">
@@ -28,9 +37,9 @@ export default async function CheckoutPage({
           )}
         </div>
 
-        {!link || link.status !== "active" ? (
+        {!link || !usable ? (
           <div className="rounded-[16px] border border-ink/10 bg-white p-6 text-center text-sm text-ink-60">
-            This payment link isn’t available anymore.
+            {link ? UNAVAILABLE_MESSAGE[effectiveLinkStatus(link)] : "This payment link isn’t available anymore."}
           </div>
         ) : (
           <>
