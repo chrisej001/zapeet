@@ -10,12 +10,10 @@ export function CheckoutForm({
   slug,
   itemName,
   flow,
-  testMode,
 }: {
   slug: string;
   itemName: string;
   flow: "insured" | "pure_delivery";
-  testMode: boolean;
 }) {
   const action = createOrder.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -84,7 +82,7 @@ export function CheckoutForm({
           <Row label="Account name" value={state.order.accountName} />
         </div>
 
-        {testMode && (
+        {state.order.testMode && (
           <div className="rounded-[14px] border border-dashed border-ink/20 p-4">
             <p className="mb-3 text-xs font-semibold text-ink-60">
               TEST MODE — simulate the transfer instead of sending real money

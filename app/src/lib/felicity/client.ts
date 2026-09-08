@@ -306,6 +306,10 @@ export function getDelivery(delivery_reference: string) {
 export type Checkout = {
   checkout_reference: string;
   status: "awaiting_payment" | "settled" | string;
+  /** The partner key's actual mode, echoed back by Felicity — the reliable
+   * way to know whether simulate_checkout_funding will work, rather than
+   * tracking a separate env var that can drift out of sync with the key. */
+  mode: "test" | "live" | string;
   goods_amount_naira: number;
   delivery_amount_naira: number;
   insurance_amount_naira: number;
@@ -323,6 +327,9 @@ export function createCheckout(input: {
   order_ref: string;
   vendor_ref: string;
   goods_amount_naira: number;
+  /** Shown on the collection VA as "Checkout - <label>" instead of the
+   * order_ref UUID — pass the vendor's business name. */
+  label?: string;
   delivery?: {
     pickup_contact_name: string;
     pickup_contact_phone: string;

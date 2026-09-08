@@ -63,7 +63,6 @@ export default async function CheckoutPage({
               slug={slug}
               itemName={link.item_name}
               flow={link.flow as "insured" | "pure_delivery"}
-              testMode={process.env.FELICITY_MODE === "test"}
             />
           </>
         )}

@@ -22,6 +22,9 @@ export type CreateOrderState = {
     insuranceAmountNaira: number;
     deliveryAmountNaira: number;
     totalAmountNaira: number;
+    /** From the checkout response's own mode field, not a static env var —
+     * so the Simulate button can never drift out of sync with the real key. */
+    testMode: boolean;
   } | null;
 };
 
@@ -133,6 +136,7 @@ export async function createOrder(
       order_ref: orderId,
       vendor_ref: vendor.felicity_talent_ref,
       goods_amount_naira: Number(link.amount_naira),
+      label: vendor.business_name,
       delivery: deliveryInput,
       insurance: insuranceInput,
     });
@@ -179,6 +183,7 @@ export async function createOrder(
       insuranceAmountNaira: checkout.insurance_amount_naira,
       deliveryAmountNaira: checkout.delivery_amount_naira,
       totalAmountNaira: checkout.total_amount_naira,
+      testMode: checkout.mode === "test",
     },
   };
 }
@@ -187,7 +192,9 @@ export async function createOrder(
  * action used to verify the full settlement chain end-to-end — Felicity
  * itself refuses this with simulate_only_in_test_mode outside test mode, so
  * it's safe even if the button were ever shown by mistake. Gated in the UI
- * by FELICITY_MODE so it never renders in production. */
+ * by the checkout's own mode field (see CreateOrderState.order.testMode),
+ * not a separately-tracked env var that could drift out of sync with the
+ * actual key. */
 export async function simulatePayment(
   orderId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
