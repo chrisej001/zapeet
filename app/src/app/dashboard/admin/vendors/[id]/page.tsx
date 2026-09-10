@@ -15,6 +15,12 @@ export default async function AdminVendorDetailPage({ params }: { params: Promis
   const { data: vendor } = await admin.from("vendors").select("*").eq("id", id).single();
   if (!vendor) notFound();
 
+  const { data: felicityAccounts } = await admin
+    .from("vendor_felicity_accounts")
+    .select("mode, felicity_talent_ref, felicity_account_number, felicity_bank_name, felicity_kyc_status, onboarded_at")
+    .eq("vendor_id", id)
+    .order("mode");
+
   const { data: links } = await admin
     .from("payment_links")
     .select("id, item_name, amount_naira, flow, status, created_at")
@@ -44,13 +50,29 @@ export default async function AdminVendorDetailPage({ params }: { params: Promis
           <DetailRow label="Date of birth" value={vendor.date_of_birth ?? "—"} />
           <DetailRow label="BVN" value={maskId(vendor.bvn)} />
           <DetailRow label="NIN" value={maskId(vendor.nin)} />
-          <div className="my-2 h-px bg-ink/10" />
-          <DetailRow label="KYC status" value={vendor.felicity_kyc_status} />
-          <DetailRow label="Account number" value={vendor.felicity_account_number ?? "—"} />
-          <DetailRow label="Bank" value={vendor.felicity_bank_name ?? "—"} />
           <DetailRow label="Pickup address" value={vendor.pickup_address ?? "—"} />
-          <DetailRow label="Onboarded" value={fmtDateTime(vendor.onboarded_at)} />
           <DetailRow label="Joined" value={fmtDateTime(vendor.created_at)} />
+        </div>
+
+        <h2 className="mb-3 text-sm font-semibold text-ink">Felicity accounts</h2>
+        <div className="mb-6 flex flex-col gap-3">
+          {!felicityAccounts?.length && (
+            <div className="rounded-[14px] border border-ink/10 bg-white p-4 text-center text-xs text-ink-60">
+              Not onboarded with Felicity yet.
+            </div>
+          )}
+          {felicityAccounts?.map((a) => (
+            <div key={a.mode} className="rounded-[16px] border border-ink/10 bg-white p-5">
+              <DetailRow
+                label="Mode"
+                value={a.mode === "live" ? "Live" : "Test"}
+              />
+              <DetailRow label="KYC status" value={a.felicity_kyc_status} />
+              <DetailRow label="Account number" value={a.felicity_account_number ?? "—"} />
+              <DetailRow label="Bank" value={a.felicity_bank_name ?? "—"} />
+              <DetailRow label="Onboarded" value={fmtDateTime(a.onboarded_at)} />
+            </div>
+          ))}
         </div>
 
         <h2 className="mb-3 text-sm font-semibold text-ink">Orders ({orders?.length ?? 0})</h2>

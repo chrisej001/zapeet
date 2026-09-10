@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getTalent } from "@/lib/felicity/client";
+import { resolveVendorFelicityAccount } from "@/lib/felicity/vendor-identity";
 import { requireAdminPage, fmtNaira, fmtDateTime, statusColor } from "./require-admin-page";
-import { TreasurySetupForm } from "./treasury-setup-form";
 import { SimulateFundForm } from "./simulate-fund-form";
 
 export default async function AdminPage() {
@@ -15,25 +15,15 @@ export default async function AdminPage() {
     admin.from("payment_links").select("id", { count: "exact", head: true }),
   ]);
 
-  const { data: treasury } = await admin
-    .from("treasury_account")
-    .select(
-      "felicity_talent_ref, felicity_account_number, felicity_account_name, felicity_bank_name, onboarded_at, first_name, last_name, phone, email",
-    )
-    .not("onboarded_at", "is", null)
-    .limit(1)
-    .maybeSingle();
-
-  const { data: vendorSelf } = await admin
-    .from("vendors")
-    .select("first_name, last_name, phone, felicity_account_number, felicity_bank_name")
-    .eq("id", user.id)
-    .single();
+  // The treasury IS the admin vendor's own account — whichever mode the
+  // currently-deployed key resolves to (see vendor-identity.ts) — not a
+  // separately onboarded identity. Nothing to "set up" anymore.
+  const account = await resolveVendorFelicityAccount(admin, user.id);
 
   let balanceNaira: number | null = null;
-  if (treasury?.felicity_talent_ref) {
+  if (account) {
     try {
-      const { talent } = await getTalent(treasury.felicity_talent_ref);
+      const { talent } = await getTalent(account.felicity_talent_ref);
       balanceNaira = talent.balance_kobo / 100;
     } catch {
       balanceNaira = null;
@@ -80,14 +70,11 @@ export default async function AdminPage() {
 
         <h2 className="mb-3 text-sm font-semibold text-ink">Treasury &amp; rebates</h2>
 
-        {!treasury ? (
-          <TreasurySetupForm
-            name={`${vendorSelf?.first_name ?? ""} ${vendorSelf?.last_name ?? ""}`.trim()}
-            phone={vendorSelf?.phone ?? ""}
-            email={user.email ?? ""}
-            accountNumber={vendorSelf?.felicity_account_number ?? ""}
-            bankName={vendorSelf?.felicity_bank_name ?? ""}
-          />
+        {!account ? (
+          <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5 text-sm text-ink-60">
+            No Felicity account resolved for the current key's mode — onboard the admin vendor for this
+            mode first.
+          </div>
         ) : (
           <>
             <div className="mb-6 flex flex-col gap-3 rounded-[16px] border border-ink/10 bg-white p-5">
@@ -99,12 +86,20 @@ export default async function AdminPage() {
               </div>
               <div className="h-px bg-ink/10" />
               <div className="flex items-center justify-between text-sm">
+                <span className="text-ink-60">Mode</span>
+                <span
+                  className={`font-semibold ${account.mode === "live" ? "text-marigold-ink" : "text-ink"}`}
+                >
+                  {account.mode === "live" ? "Live" : "Test"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
                 <span className="text-ink-60">Account number</span>
-                <span className="font-semibold text-ink">{treasury.felicity_account_number}</span>
+                <span className="font-semibold text-ink">{account.felicity_account_number}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-ink-60">Bank</span>
-                <span className="font-semibold text-ink">{treasury.felicity_bank_name}</span>
+                <span className="font-semibold text-ink">{account.felicity_bank_name}</span>
               </div>
               <p className="text-xs text-ink-60">
                 Fund this account by transferring into it, same as any vendor's account — vendor rebates
@@ -112,7 +107,7 @@ export default async function AdminPage() {
               </p>
             </div>
 
-            <SimulateFundForm />
+            {account.mode === "test" && <SimulateFundForm />}
 
             <p className="mt-8 mb-3 text-sm font-semibold text-ink">Recent rebates</p>
             <div className="flex flex-col gap-3">
