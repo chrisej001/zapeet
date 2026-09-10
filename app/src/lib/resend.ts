@@ -1,11 +1,9 @@
 import "server-only";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY!;
-// No custom domain verified on the Resend account yet (checked live
-// 2026-09-07: zero domains) — resend.dev is Resend's shared sender that
-// works for any recipient without domain verification. Swap this once a
-// domain (e.g. mail.zapeet.com) is verified.
-const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS || "Zapeet <onboarding@resend.dev>";
+// zapeet.app verified on Resend 2026-09-10 (DKIM + SPF via Namecheap DNS) —
+// confirmed live with a real delivered send to an arbitrary recipient.
+const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS || "Zapeet <noreply@zapeet.app>";
 
 export class ResendError extends Error {
   constructor(
