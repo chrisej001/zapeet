@@ -38,9 +38,17 @@ export function SiteFooter() {
               Company
             </h5>
             <ul className="flex flex-col gap-3">
-              <li className="text-sm text-ink-60">[YOUR CONTACT EMAIL]</li>
-              <li className="text-sm text-ink-60">[YOUR PHONE NUMBER]</li>
-              <li className="text-sm text-ink-60">[YOUR COMPANY ADDRESS]</li>
+              <li>
+                <a href="mailto:hello@zapeet.app" className="text-sm text-ink-60 hover:text-terracotta">
+                  hello@zapeet.app
+                </a>
+              </li>
+              <li>
+                <a href="tel:+2348138693864" className="text-sm text-ink-60 hover:text-terracotta">
+                  0813 869 3864
+                </a>
+              </li>
+              <li className="text-sm text-ink-60">Gbagada, Lagos, Nigeria</li>
             </ul>
           </div>
         </div>
