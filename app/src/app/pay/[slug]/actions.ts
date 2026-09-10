@@ -10,6 +10,7 @@ import {
   toInternationalPhone,
 } from "@/lib/felicity/client";
 import { isLinkUsable } from "@/lib/payment-link-status";
+import { resolveVendorFelicityAccount } from "@/lib/felicity/vendor-identity";
 
 export type CreateOrderState = {
   error: string | null;
@@ -49,11 +50,13 @@ export async function createOrder(
 
   const { data: vendor } = await admin
     .from("vendors")
-    .select("felicity_talent_ref, business_name, phone, pickup_address, pickup_state")
+    .select("business_name, phone, pickup_address, pickup_state")
     .eq("id", link.vendor_id)
     .single();
 
-  if (!vendor?.felicity_talent_ref || !vendor.pickup_address || !vendor.pickup_state) {
+  const felicityAccount = await resolveVendorFelicityAccount(admin, link.vendor_id);
+
+  if (!felicityAccount || !vendor?.pickup_address || !vendor.pickup_state) {
     return { error: "This vendor hasn't finished setting up their account yet.", order: null };
   }
 
@@ -134,7 +137,7 @@ export async function createOrder(
   try {
     const result = await createCheckout({
       order_ref: orderId,
-      vendor_ref: vendor.felicity_talent_ref,
+      vendor_ref: felicityAccount.felicity_talent_ref,
       goods_amount_naira: Number(link.amount_naira),
       label: vendor.business_name,
       delivery: deliveryInput,

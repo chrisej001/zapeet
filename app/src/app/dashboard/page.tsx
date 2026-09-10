@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getTalent, getTransactions } from "@/lib/felicity/client";
+import { resolveVendorFelicityAccount } from "@/lib/felicity/vendor-identity";
 import { OverviewCard } from "./overview-client";
 import { BottomNav } from "./bottom-nav";
 
@@ -14,19 +15,16 @@ export default async function DashboardPage() {
     redirect("/auth");
   }
 
-  const { data: vendor } = await supabase
-    .from("vendors")
-    .select("business_name, felicity_talent_ref, felicity_account_number, felicity_bank_name")
-    .eq("id", user.id)
-    .single();
+  const { data: vendor } = await supabase.from("vendors").select("business_name").eq("id", user.id).single();
+  const account = await resolveVendorFelicityAccount(supabase, user.id);
 
   let balanceNaira: number | null = null;
   let transactions: Awaited<ReturnType<typeof getTransactions>>["transactions"] = [];
 
-  if (vendor?.felicity_talent_ref) {
+  if (account) {
     const [talentResult, txResult] = await Promise.allSettled([
-      getTalent(vendor.felicity_talent_ref),
-      getTransactions(vendor.felicity_talent_ref),
+      getTalent(account.felicity_talent_ref),
+      getTransactions(account.felicity_talent_ref),
     ]);
     if (talentResult.status === "fulfilled") balanceNaira = talentResult.value.talent.balance_kobo / 100;
     if (txResult.status === "fulfilled") transactions = txResult.value.transactions;
@@ -37,8 +35,8 @@ export default async function DashboardPage() {
       <div className="mx-auto w-full max-w-sm">
         <OverviewCard
           businessName={vendor?.business_name ?? "Your business"}
-          accountNumber={vendor?.felicity_account_number ?? null}
-          bankName={vendor?.felicity_bank_name ?? null}
+          accountNumber={account?.felicity_account_number ?? null}
+          bankName={account?.felicity_bank_name ?? null}
           balanceNaira={balanceNaira}
           transactions={transactions}
         />

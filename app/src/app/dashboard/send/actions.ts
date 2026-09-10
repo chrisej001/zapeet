@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { send, resolveAccount, FelicityError } from "@/lib/felicity/client";
+import { resolveVendorFelicityAccount } from "@/lib/felicity/vendor-identity";
 
 export type SendMoneyState = {
   error: string | null;
@@ -46,13 +47,9 @@ export async function sendMoney(_prev: SendMoneyState, formData: FormData): Prom
     return { error: "Account number must be 10 digits.", success: null };
   }
 
-  const { data: vendor } = await supabase
-    .from("vendors")
-    .select("felicity_talent_ref")
-    .eq("id", user.id)
-    .single();
+  const account = await resolveVendorFelicityAccount(supabase, user.id);
 
-  if (!vendor?.felicity_talent_ref) {
+  if (!account) {
     return { error: "Your Felicity account isn't set up yet.", success: null };
   }
 
@@ -69,7 +66,7 @@ export async function sendMoney(_prev: SendMoneyState, formData: FormData): Prom
 
   try {
     const result = await send({
-      talent_ref: vendor.felicity_talent_ref,
+      talent_ref: account.felicity_talent_ref,
       amount_naira: amount,
       account_number: accountNumber,
       bank_code: bankCode,

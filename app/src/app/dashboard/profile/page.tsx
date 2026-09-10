@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ShieldIcon, ChevronRightIcon } from "@/components/icons";
+import { resolveVendorFelicityAccount } from "@/lib/felicity/vendor-identity";
 import { SignOutButton } from "../sign-out-button";
 import { BottomNav } from "../bottom-nav";
 
@@ -14,11 +15,11 @@ export default async function ProfilePage() {
 
   const { data: vendor } = await supabase
     .from("vendors")
-    .select(
-      "business_name, first_name, last_name, phone, felicity_account_number, felicity_bank_name, felicity_kyc_status, pickup_address, pickup_state, is_admin",
-    )
+    .select("business_name, first_name, last_name, phone, pickup_address, pickup_state, is_admin")
     .eq("id", user.id)
     .single();
+
+  const account = await resolveVendorFelicityAccount(supabase, user.id);
 
   return (
     <div className="flex min-h-dvh flex-col bg-paper px-6 py-8 pb-28">
@@ -29,9 +30,14 @@ export default async function ProfilePage() {
         <div className="mb-6 flex flex-col gap-1 rounded-[16px] border border-ink/10 bg-white p-5">
           <Row label="Contact" value={`${vendor?.first_name ?? ""} ${vendor?.last_name ?? ""}`.trim() || "—"} />
           <Row label="Phone" value={vendor?.phone ?? "—"} />
-          <Row label="KYC status" value={vendor?.felicity_kyc_status ?? "—"} />
-          <Row label="Account number" value={vendor?.felicity_account_number ?? "—"} />
-          <Row label="Bank" value={vendor?.felicity_bank_name ?? "—"} />
+          <Row
+            label="Mode"
+            value={account ? (account.mode === "live" ? "Live" : "Test") : "—"}
+            valueClassName={account?.mode === "live" ? "text-marigold-ink" : undefined}
+          />
+          <Row label="KYC status" value={account?.felicity_kyc_status ?? "—"} />
+          <Row label="Account number" value={account?.felicity_account_number ?? "—"} />
+          <Row label="Bank" value={account?.felicity_bank_name ?? "—"} />
           <Row label="Pickup address" value={vendor?.pickup_address ?? "—"} />
           <Row label="Pickup state" value={vendor?.pickup_state ?? "—"} />
         </div>
@@ -58,11 +64,19 @@ export default async function ProfilePage() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 py-2.5 text-sm">
       <span className="text-ink-60">{label}</span>
-      <span className="text-right font-semibold text-ink">{value}</span>
+      <span className={`text-right font-semibold ${valueClassName ?? "text-ink"}`}>{value}</span>
     </div>
   );
 }

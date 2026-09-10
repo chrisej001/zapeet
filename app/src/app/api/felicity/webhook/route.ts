@@ -10,6 +10,7 @@ import {
   FelicityError,
 } from "@/lib/felicity/client";
 import { sendPolicyEmail } from "@/lib/resend";
+import { resolveVendorFelicityAccount } from "@/lib/felicity/vendor-identity";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = Record<string, any>;
@@ -189,23 +190,18 @@ async function handleCheckoutCompleted(admin: any, data: Json) {
 
 /** Pays the 2.5% insurance rebate out of Zapeet's own treasury balance —
  * Felicity's auto-split only credits the vendor's goods amount, never a
- * rebate, so this is money Zapeet funds itself (see treasury_account). */
+ * rebate, so this is money Zapeet funds itself. Treasury reuses the admin
+ * vendor's own already-verified Felicity identity rather than a separate
+ * onboarding, so it's resolved the same mode-aware way as any vendor —
+ * whichever of the admin's test/live accounts the current key can actually
+ * see. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function payVendorRebate(admin: any, orderId: string, vendorId: string, rebateNaira: number) {
-  const { data: treasury } = await admin
-    .from("treasury_account")
-    .select("felicity_talent_ref, onboarded_at")
-    .not("onboarded_at", "is", null)
-    .limit(1)
-    .maybeSingle();
+  const { data: adminVendor } = await admin.from("vendors").select("id").eq("is_admin", true).limit(1).maybeSingle();
+  const treasuryAccount = adminVendor ? await resolveVendorFelicityAccount(admin, adminVendor.id) : null;
+  const vendorAccount = await resolveVendorFelicityAccount(admin, vendorId);
 
-  const { data: vendor } = await admin
-    .from("vendors")
-    .select("felicity_account_number, felicity_account_name")
-    .eq("id", vendorId)
-    .single();
-
-  if (!treasury?.felicity_talent_ref || !vendor?.felicity_account_number) {
+  if (!treasuryAccount || !vendorAccount?.felicity_account_number) {
     await admin
       .from("orders")
       .update({ rebate_status: "failed", rebate_error: "Treasury account or vendor payout details missing." })
@@ -222,7 +218,7 @@ async function payVendorRebate(admin: any, orderId: string, vendorId: string, re
   // instead of an opaque transfer failure.
   let accountName: string;
   try {
-    const { account } = await resolveAccount(vendor.felicity_account_number, RUBIES_MFB_BANK_CODE);
+    const { account } = await resolveAccount(vendorAccount.felicity_account_number, RUBIES_MFB_BANK_CODE);
     accountName = account.account_name;
   } catch (err) {
     const message = err instanceof FelicityError ? err.message : "Could not verify vendor account.";
@@ -233,9 +229,9 @@ async function payVendorRebate(admin: any, orderId: string, vendorId: string, re
 
   try {
     const result = await send({
-      talent_ref: treasury.felicity_talent_ref,
+      talent_ref: treasuryAccount.felicity_talent_ref,
       amount_naira: rebateNaira,
-      account_number: vendor.felicity_account_number,
+      account_number: vendorAccount.felicity_account_number,
       bank_code: RUBIES_MFB_BANK_CODE,
       account_name: accountName,
     });
@@ -260,7 +256,12 @@ async function handleCheckoutFulfillmentFailed(admin: any, data: Json) {
   const orderId: string | undefined = data.checkout_reference;
   if (!orderId) return;
 
-  await admin
+  // Idempotent, same as handleCheckoutCompleted — and critically, also
+  // flips payment_links.status like that handler does. This path was
+  // missing that update entirely: a real order (goods paid, e.g. delivery
+  // failed after) left its link stuck showing "Awaiting payment" forever
+  // even though the money had already moved. Found via a real live order.
+  const { data: updated } = await admin
     .from("orders")
     .update({
       payment_status: "paid", // vendor was still paid per Felicity's guarantee
@@ -270,7 +271,13 @@ async function handleCheckoutFulfillmentFailed(admin: any, data: Json) {
       settlement_error: data.error ?? data.settlement_error ?? "Delivery or insurance failed after payment.",
     })
     .eq("id", orderId)
-    .eq("payment_status", "pending");
+    .eq("payment_status", "pending")
+    .select("payment_link_id")
+    .single();
+
+  if (!updated) return;
+
+  await admin.from("payment_links").update({ status: "paid" }).eq("id", updated.payment_link_id);
 }
 
 // Pure status sync — the policy email itself is sent from
