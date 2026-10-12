@@ -8,7 +8,7 @@ export default async function AdminLinksPage() {
 
   const { data: links } = await admin
     .from("payment_links")
-    .select("id, item_name, amount_naira, flow, status, expires_at, created_at, vendors(business_name)")
+    .select("id, item_name, amount_naira, status, expires_at, created_at, vendors(business_name)")
     .order("created_at", { ascending: false })
     .limit(100);
 

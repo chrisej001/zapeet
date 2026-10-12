@@ -6,15 +6,7 @@ import { CheckCircleIcon } from "./checkout-icons";
 
 const initialState: CreateOrderState = { error: null, order: null };
 
-export function CheckoutForm({
-  slug,
-  itemName,
-  flow,
-}: {
-  slug: string;
-  itemName: string;
-  flow: "insured" | "pure_delivery";
-}) {
+export function CheckoutForm({ slug, itemName }: { slug: string; itemName: string }) {
   const action = createOrder.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initialState);
   const [confirmedToPay, setConfirmedToPay] = useState(false);
@@ -55,16 +47,16 @@ export function CheckoutForm({
   }, [confirmedToPay, state.order?.orderId, orderStatus?.paid]);
 
   if (state.order) {
-    const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
+    const naira = (n: number) => `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
 
     if (!confirmedToPay) {
       return (
         <div className="flex flex-col gap-5 rounded-[20px] border border-ink/10 bg-white p-6">
           <p className="text-base font-bold text-ink">Order summary</p>
           <div className="flex flex-col gap-3 rounded-[14px] bg-paper p-4">
-            <Row label={itemName} value={naira(state.order.goodsAmountNaira)} />
-            {state.order.insuranceAmountNaira > 0 && (
-              <Row label="Device insurance" value={naira(state.order.insuranceAmountNaira)} />
+            <Row label={itemName} value={naira(state.order.itemPriceNaira)} />
+            {state.order.customerFeeNaira > 0 && (
+              <Row label="Service fee" value={naira(state.order.customerFeeNaira)} />
             )}
             <Row label="Delivery" value={naira(state.order.deliveryAmountNaira)} />
             <div className="h-px bg-ink/10" />
@@ -150,7 +142,7 @@ export function CheckoutForm({
             </p>
             {simulateState === "done" ? (
               <p className="text-sm font-semibold text-marigold-ink">
-                ✓ Payment simulated — delivery and insurance are processing.
+                ✓ Payment simulated — payout and delivery are processing.
               </p>
             ) : (
               <>
@@ -192,32 +184,6 @@ export function CheckoutForm({
         />
       </label>
       <p className="-mt-2 text-xs text-ink-60">Same-day delivery only covers Lagos right now.</p>
-
-      {flow === "insured" && (
-        <div className="flex flex-col gap-4 rounded-[10px] border border-marigold/30 bg-marigold/5 p-4">
-          <p className="text-xs text-ink-60">Needed to issue your device insurance policy.</p>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
-                Gender
-              </span>
-              <select
-                name="customer_gender"
-                required
-                defaultValue=""
-                className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
-              >
-                <option value="" disabled>
-                  Select…
-                </option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </select>
-            </label>
-            <Field name="customer_date_of_birth" label="Date of birth" type="date" />
-          </div>
-        </div>
-      )}
 
       {state.error && (
         <div className="rounded-[10px] bg-terracotta/10 px-4 py-3 text-sm font-medium text-terracotta">

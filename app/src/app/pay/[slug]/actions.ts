@@ -1,16 +1,10 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isPlausibleDateOfBirth } from "@/lib/validate-dob";
-import {
-  createCheckout,
-  simulateCheckoutFunding,
-  findGadgetCoverProduct,
-  FelicityError,
-  toInternationalPhone,
-} from "@/lib/felicity/client";
+import { createCheckout, simulateCheckoutFunding, FelicityError } from "@/lib/felicity/client";
 import { isLinkUsable } from "@/lib/payment-link-status";
-import { resolveVendorFelicityAccount } from "@/lib/felicity/vendor-identity";
+import { planPayout } from "@/lib/fee";
+import { ZAPEET_FEE_ACCOUNT } from "@/lib/zapeet-fee";
 
 export type CreateOrderState = {
   error: string | null;
@@ -19,8 +13,9 @@ export type CreateOrderState = {
     accountNumber: string;
     accountName: string;
     bankName: string;
-    goodsAmountNaira: number;
-    insuranceAmountNaira: number;
+    itemPriceNaira: number;
+    /** Only non-zero when the vendor has passed the fee on to the customer. */
+    customerFeeNaira: number;
     deliveryAmountNaira: number;
     totalAmountNaira: number;
     /** From the checkout response's own mode field, not a static env var —
@@ -39,7 +34,7 @@ export async function createOrder(
   const { data: link } = await admin
     .from("payment_links")
     .select(
-      "id, vendor_id, amount_naira, status, expires_at, flow, item_name, device_type, device_make, device_model, device_imei, device_serial_number, device_color, device_purchase_date, device_image_url",
+      "id, vendor_id, amount_naira, status, expires_at, item_name, customer_pays_fee",
     )
     .eq("slug", slug)
     .single();
@@ -50,13 +45,19 @@ export async function createOrder(
 
   const { data: vendor } = await admin
     .from("vendors")
-    .select("business_name, phone, pickup_address, pickup_state")
+    .select(
+      "business_name, phone, pickup_address, pickup_state, payout_bank_code, payout_bank_name, payout_account_number, payout_account_name",
+    )
     .eq("id", link.vendor_id)
     .single();
 
-  const felicityAccount = await resolveVendorFelicityAccount(admin, link.vendor_id);
-
-  if (!felicityAccount || !vendor?.pickup_address || !vendor.pickup_state) {
+  if (
+    !vendor?.pickup_address ||
+    !vendor.pickup_state ||
+    !vendor.payout_bank_code ||
+    !vendor.payout_account_number ||
+    !vendor.payout_account_name
+  ) {
     return { error: "This vendor hasn't finished setting up their account yet.", order: null };
   }
 
@@ -66,8 +67,6 @@ export async function createOrder(
   const customerPhone = String(formData.get("customer_phone") ?? "").trim();
   const deliveryAddress = String(formData.get("delivery_address") ?? "").trim();
   const deliveryState = String(formData.get("delivery_state") ?? "").trim();
-  const customerGender = String(formData.get("customer_gender") ?? "").trim();
-  const customerDateOfBirth = String(formData.get("customer_date_of_birth") ?? "").trim();
 
   if (
     !customerFirstName ||
@@ -79,13 +78,6 @@ export async function createOrder(
   ) {
     return { error: "All fields are required — every order includes rider delivery.", order: null };
   }
-  if (link.flow === "insured" && (!customerGender || !customerDateOfBirth)) {
-    return { error: "Gender and date of birth are required to issue device insurance.", order: null };
-  }
-  if (link.flow === "insured" && !isPlausibleDateOfBirth(customerDateOfBirth)) {
-    return { error: "Enter a valid date of birth.", order: null };
-  }
-
   const orderId = crypto.randomUUID();
 
   const deliveryInput = {
@@ -100,48 +92,30 @@ export async function createOrder(
     item_description: link.item_name,
   };
 
-  let insuranceInput: NonNullable<Parameters<typeof createCheckout>[0]["insurance"]> | undefined;
-
-  if (link.flow === "insured") {
-    if (!link.device_type || !link.device_make || !link.device_model) {
-      return { error: "This link is missing device details — ask the vendor to recreate it.", order: null };
-    }
-    try {
-      const gadgetProduct = await findGadgetCoverProduct();
-      insuranceInput = {
-        product_id: gadgetProduct.id,
-        device_type: link.device_type,
-        device_value: Number(link.amount_naira),
-        device_make: link.device_make,
-        device_model: link.device_model,
-        gender: customerGender,
-        date_of_birth: customerDateOfBirth,
-        address: deliveryAddress,
-        first_name: customerFirstName,
-        last_name: customerLastName,
-        email: customerEmail,
-        phone: toInternationalPhone(customerPhone),
-        bought_for_self: true,
-        device_color: link.device_color ?? undefined,
-        serial_number: link.device_serial_number ?? undefined,
-        imei: link.device_imei ?? undefined,
-        device_purchase_date: link.device_purchase_date ?? undefined,
-        image_url: link.device_image_url ?? undefined,
-      };
-    } catch {
-      return { error: "Insurance isn't available right now — please try again shortly.", order: null };
-    }
-  }
+  const itemPrice = Number(link.amount_naira);
+  const plan = planPayout(itemPrice, link.customer_pays_fee);
 
   let checkout;
   try {
     const result = await createCheckout({
       order_ref: orderId,
-      vendor_ref: felicityAccount.felicity_talent_ref,
-      goods_amount_naira: Number(link.amount_naira),
+      goods_amount_naira: plan.goodsAmountNaira,
+      splits: [
+        {
+          account_number: vendor.payout_account_number,
+          bank_code: vendor.payout_bank_code,
+          account_name: vendor.payout_account_name,
+          percentage: plan.vendorPercentage,
+        },
+        {
+          account_number: ZAPEET_FEE_ACCOUNT.account_number,
+          bank_code: ZAPEET_FEE_ACCOUNT.bank_code,
+          account_name: ZAPEET_FEE_ACCOUNT.account_name,
+          percentage: plan.feePercentage,
+        },
+      ],
       label: vendor.business_name,
       delivery: deliveryInput,
-      insurance: insuranceInput,
     });
     checkout = result.checkout;
   } catch (err) {
@@ -159,10 +133,13 @@ export async function createOrder(
     customer_phone: customerPhone,
     delivery_address: deliveryAddress,
     delivery_state: deliveryState,
-    customer_gender: link.flow === "insured" ? customerGender : null,
-    customer_date_of_birth: link.flow === "insured" ? customerDateOfBirth : null,
-    goods_amount_naira: checkout.goods_amount_naira,
-    insurance_amount_naira: checkout.insurance_amount_naira,
+    goods_amount_naira: itemPrice,
+    zapeet_fee_naira: plan.feeNaira,
+    vendor_payout_naira: plan.vendorPayoutNaira,
+    customer_paid_fee: link.customer_pays_fee,
+    payout_bank_name: vendor.payout_bank_name,
+    payout_account_number: vendor.payout_account_number,
+    payout_account_name: vendor.payout_account_name,
     delivery_amount_naira: checkout.delivery_amount_naira,
     total_amount_naira: checkout.total_amount_naira,
     felicity_checkout_account_number: checkout.account_number,
@@ -182,8 +159,8 @@ export async function createOrder(
       accountNumber: checkout.account_number,
       accountName: checkout.account_name,
       bankName: checkout.bank_name,
-      goodsAmountNaira: checkout.goods_amount_naira,
-      insuranceAmountNaira: checkout.insurance_amount_naira,
+      itemPriceNaira: itemPrice,
+      customerFeeNaira: link.customer_pays_fee ? plan.feeNaira : 0,
       deliveryAmountNaira: checkout.delivery_amount_naira,
       totalAmountNaira: checkout.total_amount_naira,
       testMode: checkout.mode === "test",

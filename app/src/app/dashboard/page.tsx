@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getTalent, getTransactions } from "@/lib/felicity/client";
-import { resolveVendorFelicityAccount } from "@/lib/felicity/vendor-identity";
-import { OverviewCard } from "./overview-client";
+import { OverviewCard, type OverviewOrder } from "./overview-card";
 import { BottomNav } from "./bottom-nav";
 
 export default async function DashboardPage() {
@@ -15,30 +13,41 @@ export default async function DashboardPage() {
     redirect("/auth");
   }
 
-  const { data: vendor } = await supabase.from("vendors").select("business_name").eq("id", user.id).single();
-  const account = await resolveVendorFelicityAccount(supabase, user.id);
+  const [{ data: vendor }, { data: orders }] = await Promise.all([
+    supabase
+      .from("vendors")
+      .select("business_name, payout_bank_name, payout_account_number")
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("orders")
+      .select(
+        "id, created_at, paid_at, vendor_payout_naira, goods_amount_naira, payout_status, customer_first_name, payment_links(item_name)",
+      )
+      .eq("payment_status", "paid")
+      .order("paid_at", { ascending: false })
+      .limit(100),
+  ]);
 
-  let balanceNaira: number | null = null;
-  let transactions: Awaited<ReturnType<typeof getTransactions>>["transactions"] = [];
-
-  if (account) {
-    const [talentResult, txResult] = await Promise.allSettled([
-      getTalent(account.felicity_talent_ref),
-      getTransactions(account.felicity_talent_ref),
-    ]);
-    if (talentResult.status === "fulfilled") balanceNaira = talentResult.value.talent.balance_kobo / 100;
-    if (txResult.status === "fulfilled") transactions = txResult.value.transactions;
-  }
+  const paidOrders: OverviewOrder[] = (orders ?? []).map((o) => ({
+    id: o.id,
+    paidAt: o.paid_at ?? o.created_at,
+    // Orders from before split payouts have no payout figure — the whole
+    // item price was credited then.
+    payoutNaira: Number(o.vendor_payout_naira ?? o.goods_amount_naira ?? 0),
+    payoutStatus: o.payout_status,
+    customerName: o.customer_first_name,
+    itemName: (o.payment_links as unknown as { item_name: string } | null)?.item_name ?? "Order",
+  }));
 
   return (
     <div className="flex min-h-dvh flex-col bg-paper px-6 py-8 pb-28">
       <div className="mx-auto w-full max-w-sm">
         <OverviewCard
           businessName={vendor?.business_name ?? "Your business"}
-          accountNumber={account?.felicity_account_number ?? null}
-          bankName={account?.felicity_bank_name ?? null}
-          balanceNaira={balanceNaira}
-          transactions={transactions}
+          payoutBankName={vendor?.payout_bank_name ?? null}
+          payoutAccountNumber={vendor?.payout_account_number ?? null}
+          orders={paidOrders}
         />
       </div>
       <BottomNav />

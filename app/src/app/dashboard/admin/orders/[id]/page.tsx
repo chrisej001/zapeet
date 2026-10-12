@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminPage, fmtNaira, fmtDateTime, statusColor } from "../../require-admin-page";
 import { DetailRow } from "../../list-row";
-import { listClaims, FelicityError } from "@/lib/felicity/client";
 
 export default async function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,36 +10,19 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
   const { data: order } = await admin
     .from("orders")
     .select(
-      "*, vendors(id, business_name), payment_links(item_name, slug, flow, device_imei, device_serial_number, device_color, device_purchase_date, device_image_url)",
+      "*, vendors(id, business_name), payment_links(item_name, slug)",
     )
     .eq("id", id)
     .single();
   if (!order) notFound();
 
   const { data: delivery } = await admin.from("deliveries").select("*").eq("order_id", id).maybeSingle();
-  const { data: policy } = await admin.from("insurance_policies").select("*").eq("order_id", id).maybeSingle();
 
   const vendor = order.vendors as unknown as { id: string; business_name: string } | null;
-  const link = order.payment_links as unknown as {
-    item_name: string;
-    slug: string;
-    flow: string;
-    device_imei: string | null;
-    device_serial_number: string | null;
-    device_color: string | null;
-    device_purchase_date: string | null;
-    device_image_url: string | null;
-  } | null;
-
-  let claims: Awaited<ReturnType<typeof listClaims>>["claims"] | null = null;
-  let claimsError: string | null = null;
-  if (policy?.felicity_policy_reference) {
-    try {
-      claims = (await listClaims(policy.felicity_policy_reference)).claims;
-    } catch (err) {
-      claimsError = err instanceof FelicityError ? err.message : "Could not load claims.";
-    }
-  }
+  const link = order.payment_links as unknown as { item_name: string; slug: string } | null;
+  const splitResults = (order.split_results ?? null) as
+    | { account_number?: string; account_name?: string; status: string; amount_naira: number; error?: string | null }[]
+    | null;
 
   return (
     <div className="flex min-h-dvh flex-col bg-paper px-6 py-8">
@@ -56,18 +38,43 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
         <h2 className="mb-3 text-sm font-semibold text-ink">Breakdown</h2>
         <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5">
           <DetailRow label="Item" value={fmtNaira(order.goods_amount_naira)} />
-          <DetailRow label="Insurance" value={fmtNaira(order.insurance_amount_naira)} />
           <DetailRow label="Delivery" value={fmtNaira(order.delivery_amount_naira)} />
           <div className="my-2 h-px bg-ink/10" />
-          <DetailRow label="Total" value={fmtNaira(order.total_amount_naira)} />
+          <DetailRow label="Customer paid" value={fmtNaira(order.total_amount_naira)} />
           <div className="my-2 h-px bg-ink/10" />
-          <DetailRow label="Vendor rebate (2.5%)" value={fmtNaira(order.vendor_rebate_naira)} />
-          <DetailRow label="Rebate status" value={order.rebate_status ?? "—"} />
-          {order.rebate_payout_reference && (
-            <DetailRow label="Rebate ref" value={order.rebate_payout_reference} />
-          )}
-          {order.rebate_error && <p className="mt-2 text-xs text-terracotta">{order.rebate_error}</p>}
+          <DetailRow
+            label={`Zapeet fee (${order.customer_paid_fee ? "customer" : "vendor"} paid)`}
+            value={fmtNaira(order.zapeet_fee_naira)}
+          />
+          <DetailRow label="Vendor payout" value={fmtNaira(order.vendor_payout_naira)} />
+          <DetailRow label="Payout status" value={order.payout_status ?? "—"} />
+          <DetailRow
+            label="Paid to"
+            value={
+              order.payout_account_number
+                ? `${order.payout_bank_name} · ${order.payout_account_number}`
+                : "—"
+            }
+          />
+          {order.payout_account_name && <DetailRow label="Account name" value={order.payout_account_name} />}
         </div>
+
+        {splitResults?.length ? (
+          <>
+            <h2 className="mb-3 text-sm font-semibold text-ink">Split transfers</h2>
+            <div className="mb-6 flex flex-col gap-3">
+              {splitResults.map((r, i) => (
+                <div key={i} className="rounded-[14px] border border-ink/10 bg-white p-4">
+                  <DetailRow label={r.account_name ?? r.account_number ?? `Split ${i + 1}`} value={fmtNaira(r.amount_naira)} />
+                  <p className={`text-xs font-semibold ${statusColor(r.status === "success" ? "paid" : r.status)}`}>
+                    {r.status}
+                  </p>
+                  {r.error && <p className="mt-1 text-xs text-terracotta">{r.error}</p>}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
 
         <h2 className="mb-3 text-sm font-semibold text-ink">Customer</h2>
         <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5">
@@ -91,62 +98,6 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
             <p className="text-sm text-ink-60">—</p>
           )}
         </div>
-
-        {link?.flow === "insured" && (
-          <>
-            <h2 className="mb-3 text-sm font-semibold text-ink">Device</h2>
-            <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5">
-              <DetailRow label="IMEI" value={link.device_imei ?? "—"} />
-              <DetailRow label="Serial number" value={link.device_serial_number ?? "—"} />
-              <DetailRow label="Color" value={link.device_color ?? "—"} />
-              <DetailRow label="Purchased" value={link.device_purchase_date ?? "—"} />
-            </div>
-            {link.device_image_url && (
-              <div className="mb-6 overflow-hidden rounded-[16px] border border-ink/10 bg-white">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={link.device_image_url} alt={link.item_name} className="h-48 w-full object-cover" />
-              </div>
-            )}
-
-            <h2 className="mb-3 text-sm font-semibold text-ink">Insurance policy</h2>
-            <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5">
-              {policy ? (
-                <>
-                  <DetailRow label="Policy number" value={policy.felicity_policy_number ?? "—"} />
-                  <DetailRow label="Premium" value={fmtNaira(policy.premium_naira)} />
-                  <DetailRow label="Status" value={policy.status} />
-                  {policy.policy_document_url && (
-                    <DetailRow label="Document" value="Available" />
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-ink-60">Not issued yet.</p>
-              )}
-            </div>
-
-            <h2 className="mb-3 text-sm font-semibold text-ink">Claims</h2>
-            <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5">
-              {!policy ? (
-                <p className="text-sm text-ink-60">No policy issued yet.</p>
-              ) : claimsError ? (
-                <p className="text-sm text-terracotta">{claimsError}</p>
-              ) : !claims?.length ? (
-                <p className="text-sm text-ink-60">No claims filed with the insurer.</p>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {claims.map((c) => (
-                    <div key={c.claim_reference} className="rounded-[10px] bg-paper p-3">
-                      <DetailRow label="Reference" value={c.claim_reference} />
-                      <DetailRow label="Status" value={c.status ?? "—"} />
-                      <DetailRow label="Amount" value={fmtNaira(c.amount_naira)} />
-                      <DetailRow label="Filed" value={fmtDateTime(c.created_at)} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        )}
 
         <h2 className="mb-3 text-sm font-semibold text-ink">Delivery</h2>
         <div className="rounded-[16px] border border-ink/10 bg-white p-5">

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useHiddenAmount } from "@/lib/use-hidden-amount";
 import type { LedgerEntry, LedgerEntryType } from "@/lib/felicity/client";
-import { EyeIcon, EyeOffIcon, ArrowUpRightIcon, ArrowDownLeftIcon, SendIcon, LinkIcon } from "@/components/icons";
+import { EyeIcon, EyeOffIcon, ArrowUpRightIcon, ArrowDownLeftIcon, SendIcon } from "@/components/icons";
 
 const CREDIT_TYPES = new Set<LedgerEntryType>(["inbound_credit", "checkout_payout", "refund", "settlement"]);
 
@@ -147,43 +148,31 @@ function CashflowChart({ transactions }: { transactions: LedgerEntry[] }) {
   );
 }
 
-export function OverviewCard({
-  businessName,
+/** Zapeet's fee account — the Felicity balance every order's fee is split
+ * into. Same ledger rendering vendors used to see for their own VA. */
+export function FeeAccountCard({
   accountNumber,
   bankName,
   balanceNaira,
   transactions,
 }: {
-  businessName: string;
   accountNumber: string | null;
   bankName: string | null;
   balanceNaira: number | null;
   transactions: LedgerEntry[];
 }) {
-  const [hidden, setHidden] = useState(false);
+  const [hidden, toggleHidden] = useHiddenAmount();
   const [selected, setSelected] = useState<Group | null>(null);
 
-  useEffect(() => {
-    setHidden(localStorage.getItem("zapeet_balance_hidden") === "1");
-  }, []);
 
-  function toggleHidden() {
-    setHidden((prev) => {
-      const next = !prev;
-      localStorage.setItem("zapeet_balance_hidden", next ? "1" : "0");
-      return next;
-    });
-  }
 
   const groups = useMemo(() => groupTransactions(transactions), [transactions]);
 
   return (
     <>
-      <h1 className="mb-6 text-xl">{businessName}</h1>
-
       <div className="mb-4 rounded-[16px] border border-ink/10 bg-white p-5">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm text-ink-60">Account balance</span>
+          <span className="text-sm text-ink-60">Fee account balance</span>
           <button onClick={toggleHidden} className="text-ink-60" aria-label="Toggle balance visibility">
             {hidden ? <EyeOffIcon className="h-4.5 w-4.5" /> : <EyeIcon className="h-4.5 w-4.5" />}
           </button>
@@ -198,22 +187,13 @@ export function OverviewCard({
         )}
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3">
-        <Link
-          href="/dashboard/send"
-          className="flex items-center justify-center gap-2 rounded-[10px] border border-ink/15 bg-white py-3 text-sm font-semibold text-ink"
-        >
-          <SendIcon className="h-4 w-4" />
-          Send money
-        </Link>
-        <Link
-          href="/dashboard/links/new"
-          className="flex items-center justify-center gap-2 rounded-[10px] bg-ink py-3 text-sm font-semibold text-paper"
-        >
-          <LinkIcon className="h-4 w-4" />
-          Generate link
-        </Link>
-      </div>
+      <Link
+        href="/dashboard/admin/send"
+        className="mb-6 flex items-center justify-center gap-2 rounded-[10px] border border-ink/15 bg-white py-3 text-sm font-semibold text-ink"
+      >
+        <SendIcon className="h-4 w-4" />
+        Withdraw fees
+      </Link>
 
       <div className="mb-6">
         <CashflowChart transactions={transactions} />

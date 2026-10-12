@@ -28,18 +28,15 @@ export default async function VendorOrderDetailPage({ params }: { params: Promis
 
   const { data: order } = await supabase
     .from("orders")
-    .select(
-      "*, payment_links(item_name, flow)",
-    )
+    .select("*, payment_links(item_name)")
     .eq("id", id)
     .eq("vendor_id", user.id)
     .single();
   if (!order) notFound();
 
   const { data: delivery } = await supabase.from("deliveries").select("*").eq("order_id", id).maybeSingle();
-  const { data: policy } = await supabase.from("insurance_policies").select("*").eq("order_id", id).maybeSingle();
 
-  const link = order.payment_links as unknown as { item_name: string; flow: string } | null;
+  const link = order.payment_links as unknown as { item_name: string } | null;
 
   return (
     <div className="flex min-h-dvh flex-col bg-paper px-6 py-8 pb-28">
@@ -65,23 +62,34 @@ export default async function VendorOrderDetailPage({ params }: { params: Promis
         <h2 className="mb-3 text-sm font-semibold text-ink">Breakdown</h2>
         <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5">
           <DetailRow label="Item" value={fmtNaira(order.goods_amount_naira)} />
-          {link?.flow === "insured" && (
-            <DetailRow label="Insurance" value={fmtNaira(order.insurance_amount_naira)} />
-          )}
+          {order.customer_paid_fee && <DetailRow label="Service fee" value={fmtNaira(order.zapeet_fee_naira)} />}
           <DetailRow label="Delivery" value={fmtNaira(order.delivery_amount_naira)} />
           <div className="my-2 h-px bg-ink/10" />
-          <DetailRow label="Total" value={fmtNaira(order.total_amount_naira)} />
+          <DetailRow label="Customer paid" value={fmtNaira(order.total_amount_naira)} />
         </div>
 
-        {link?.flow === "insured" && policy && (
-          <>
-            <h2 className="mb-3 text-sm font-semibold text-ink">Insurance policy</h2>
-            <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5">
-              <DetailRow label="Policy number" value={policy.felicity_policy_number ?? "—"} />
-              <DetailRow label="Status" value={policy.status} />
-            </div>
-          </>
-        )}
+        <h2 className="mb-3 text-sm font-semibold text-ink">Your payout</h2>
+        <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5">
+          {order.zapeet_fee_naira != null && !order.customer_paid_fee && (
+            <DetailRow label="Zapeet fee" value={`−${fmtNaira(order.zapeet_fee_naira)}`} />
+          )}
+          <DetailRow label="You receive" value={fmtNaira(order.vendor_payout_naira ?? order.goods_amount_naira)} />
+          <DetailRow
+            label="Status"
+            value={
+              order.payment_status !== "paid"
+                ? "Awaiting customer payment"
+                : order.payout_status === "paid"
+                  ? "Sent"
+                  : order.payout_status === "failed"
+                    ? "Failed — Zapeet is resolving it"
+                    : "Processing"
+            }
+          />
+          {order.payout_account_number && (
+            <DetailRow label="Paid to" value={`${order.payout_bank_name} · ${order.payout_account_number}`} />
+          )}
+        </div>
 
         <h2 className="mb-3 text-sm font-semibold text-ink">Delivery</h2>
         <div className="rounded-[16px] border border-ink/10 bg-white p-5">

@@ -109,3 +109,22 @@ export function ArrowDownLeftIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function BankIcon({ className }: IconProps) {
+  return (
+    <svg {...base} strokeWidth={1.9} className={className}>
+      <path d="M3 9.5L12 4l9 5.5" />
+      <path d="M5 10v7M9.5 10v7M14.5 10v7M19 10v7" />
+      <path d="M3.5 20h17" />
+    </svg>
+  );
+}
+
+export function LockIcon({ className }: IconProps) {
+  return (
+    <svg {...base} strokeWidth={1.9} className={className}>
+      <rect x="5" y="10.5" width="14" height="10" rx="2" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}

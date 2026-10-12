@@ -19,6 +19,21 @@ export async function requireAdminPage() {
   return { user, admin: createAdminClient() };
 }
 
+/** Same check for admin server actions, which can't redirect mid-form —
+ * throws instead. */
+export async function requireAdmin() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated.");
+
+  const { data: vendor } = await supabase.from("vendors").select("is_admin").eq("id", user.id).single();
+  if (!vendor?.is_admin) throw new Error("Not authorized.");
+
+  return user;
+}
+
 export function fmtNaira(amount: number | string | null | undefined) {
   if (amount == null) return "—";
   return `₦${Number(amount).toLocaleString("en-NG")}`;

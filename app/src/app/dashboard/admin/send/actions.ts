@@ -1,8 +1,8 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { send, resolveAccount, FelicityError } from "@/lib/felicity/client";
-import { resolveVendorFelicityAccount } from "@/lib/felicity/vendor-identity";
+import { ZAPEET_FEE_ACCOUNT } from "@/lib/zapeet-fee";
+import { requireAdmin } from "../require-admin-page";
 
 export type SendMoneyState = {
   error: string | null;
@@ -14,28 +14,14 @@ export type SendMoneyState = {
   } | null;
 };
 
-export async function resolveAccountAction(
-  accountNumber: string,
-  bankCode: string,
-): Promise<{ ok: true; accountName: string } | { ok: false; error: string }> {
-  if (!/^\d{10}$/.test(accountNumber) || !bankCode) {
-    return { ok: false, error: "" };
-  }
-  try {
-    const { account } = await resolveAccount(accountNumber, bankCode);
-    return { ok: true, accountName: account.account_name };
-  } catch (err) {
-    const message = err instanceof FelicityError ? err.message : "Could not verify account.";
-    return { ok: false, error: message };
-  }
-}
-
+/** Withdraws from Zapeet's fee account — the Felicity balance every
+ * order's 2% fee lands in. Admin-only. */
 export async function sendMoney(_prev: SendMoneyState, formData: FormData): Promise<SendMoneyState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Your session expired — please log in again.", success: null };
+  try {
+    await requireAdmin();
+  } catch {
+    return { error: "Not authorized.", success: null };
+  }
 
   const amount = Number(formData.get("amount_naira"));
   const bankCode = String(formData.get("bank_code") ?? "").trim();
@@ -45,12 +31,6 @@ export async function sendMoney(_prev: SendMoneyState, formData: FormData): Prom
   if (!bankCode) return { error: "Pick a bank.", success: null };
   if (!/^\d{10}$/.test(accountNumber)) {
     return { error: "Account number must be 10 digits.", success: null };
-  }
-
-  const account = await resolveVendorFelicityAccount(supabase, user.id);
-
-  if (!account) {
-    return { error: "Your Felicity account isn't set up yet.", success: null };
   }
 
   // Re-resolve server-side at submit time — authoritative, not a client-
@@ -66,7 +46,7 @@ export async function sendMoney(_prev: SendMoneyState, formData: FormData): Prom
 
   try {
     const result = await send({
-      talent_ref: account.felicity_talent_ref,
+      talent_ref: ZAPEET_FEE_ACCOUNT.talent_ref,
       amount_naira: amount,
       account_number: accountNumber,
       bank_code: bankCode,

@@ -3,13 +3,19 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { createPaymentLink, type CreateLinkState } from "../actions";
-import { DevicePhotoInput } from "./device-photo-input";
+import { zapeetFeeNaira } from "@/lib/fee";
 
 const initialState: CreateLinkState = { error: null };
 
+const naira = (n: number) => `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
+
 export default function NewLinkPage() {
   const [state, formAction, pending] = useActionState(createPaymentLink, initialState);
-  const [flow, setFlow] = useState<"insured" | "pure_delivery">("insured");
+  const [amount, setAmount] = useState("");
+  const [customerPaysFee, setCustomerPaysFee] = useState(false);
+
+  const price = Number(amount);
+  const fee = price > 0 ? zapeetFeeNaira(price) : 0;
 
   return (
     <div className="flex min-h-dvh flex-col bg-paper px-6 py-8">
@@ -20,8 +26,8 @@ export default function NewLinkPage() {
 
         <h1 className="mt-4 text-xl">Generate a payment link</h1>
         <p className="mt-1.5 text-sm text-ink-60">
-          Pick insured for high-value devices, pure delivery for everything
-          else.
+          Your customer pays the item price plus delivery. You&apos;re paid instantly to your bank, and a rider is
+          booked automatically.
         </p>
 
         <form action={formAction} className="mt-6 flex flex-col gap-4">
@@ -39,9 +45,7 @@ export default function NewLinkPage() {
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
-              Amount (₦)
-            </span>
+            <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">Amount (₦)</span>
             <input
               name="amount_naira"
               type="number"
@@ -50,144 +54,54 @@ export default function NewLinkPage() {
               required
               placeholder="185000"
               inputMode="numeric"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
               className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
             />
           </label>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
-              Flow
+          <input type="hidden" name="customer_pays_fee" value={customerPaysFee ? "1" : "0"} />
+          <button
+            type="button"
+            role="switch"
+            aria-checked={customerPaysFee}
+            onClick={() => setCustomerPaysFee((v) => !v)}
+            className="flex items-center justify-between gap-4 rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-left"
+          >
+            <span>
+              <span className="block text-sm font-semibold text-ink">Customer pays the Zapeet fee</span>
+              <span className="mt-0.5 block text-xs text-ink-60">
+                2% of the price, capped at ₦2,000. Off: it comes out of your payout.
+              </span>
             </span>
-            <input type="hidden" name="flow" value={flow} />
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setFlow("insured")}
-                className={`flex-1 rounded-[10px] border px-4 py-3 text-sm font-semibold ${
-                  flow === "insured"
-                    ? "border-marigold bg-marigold/15 text-marigold-ink"
-                    : "border-ink/15 text-ink-60"
+            <span
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                customerPaysFee ? "bg-marigold" : "bg-ink/20"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  customerPaysFee ? "translate-x-5" : ""
                 }`}
-              >
-                Insured
-              </button>
-              <button
-                type="button"
-                onClick={() => setFlow("pure_delivery")}
-                className={`flex-1 rounded-[10px] border px-4 py-3 text-sm font-semibold ${
-                  flow === "pure_delivery"
-                    ? "border-terracotta bg-terracotta/15 text-terracotta"
-                    : "border-ink/15 text-ink-60"
-                }`}
-              >
-                Pure delivery
-              </button>
-            </div>
-          </div>
+              />
+            </span>
+          </button>
 
-          {flow === "insured" && (
-            <div className="flex flex-col gap-4 rounded-[10px] border border-marigold/30 bg-marigold/5 p-4">
-              <p className="text-xs text-ink-60">
-                Needed to price the device insurance.
-              </p>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
-                  Device type
-                </span>
-                <select
-                  name="device_type"
-                  required
-                  defaultValue=""
-                  className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
-                >
-                  <option value="" disabled>
-                    Select…
-                  </option>
-                  <option value="Phone">Phone</option>
-                  <option value="Laptop">Laptop</option>
-                  <option value="Tablet">Tablet</option>
-                  <option value="POS">POS</option>
-                </select>
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
-                    Make
-                  </span>
-                  <input
-                    name="device_make"
-                    type="text"
-                    required
-                    placeholder="Apple"
-                    className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
-                    Model
-                  </span>
-                  <input
-                    name="device_model"
-                    type="text"
-                    required
-                    placeholder="MacBook Air M2"
-                    className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
-                  />
-                </label>
+          {price > 0 && (
+            <div className="flex flex-col gap-2 rounded-[10px] bg-white p-4 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-ink-60">Customer pays (before delivery)</span>
+                <span className="font-semibold text-ink">{naira(customerPaysFee ? price + fee : price)}</span>
               </div>
-
-              <div className="h-px bg-marigold/20" />
-              <p className="-mb-1 text-xs text-ink-60">
-                Optional, but strengthens the policy and speeds up any future claim.
-              </p>
-
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">IMEI</span>
-                  <input
-                    name="device_imei"
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="356938035643809"
-                    className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
-                    Serial number
-                  </span>
-                  <input
-                    name="device_serial_number"
-                    type="text"
-                    placeholder="C02X1234ABCD"
-                    className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
-                  />
-                </label>
+              <div className="flex items-center justify-between">
+                <span className="text-ink-60">Zapeet fee</span>
+                <span className="font-semibold text-ink">{naira(fee)}</span>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">Color</span>
-                  <input
-                    name="device_color"
-                    type="text"
-                    placeholder="Space Gray"
-                    className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">
-                    Purchase date
-                  </span>
-                  <input
-                    name="device_purchase_date"
-                    type="date"
-                    max={new Date().toISOString().slice(0, 10)}
-                    className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
-                  />
-                </label>
+              <div className="h-px bg-ink/10" />
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-ink">You receive</span>
+                <span className="font-bold text-marigold-ink">{naira(customerPaysFee ? price : price - fee)}</span>
               </div>
-
-              <DevicePhotoInput />
             </div>
           )}
 

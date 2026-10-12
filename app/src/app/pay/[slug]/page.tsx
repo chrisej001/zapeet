@@ -19,7 +19,7 @@ export default async function CheckoutPage({
 
   const { data: link } = await admin
     .from("payment_links")
-    .select("item_name, amount_naira, flow, status, expires_at, vendor:vendors(business_name)")
+    .select("item_name, amount_naira, status, expires_at, vendor:vendors(business_name)")
     .eq("slug", slug)
     .single();
 
@@ -48,22 +48,12 @@ export default async function CheckoutPage({
               <p className="mt-1 text-3xl font-extrabold tracking-tight text-ink">
                 ₦{Number(link.amount_naira).toLocaleString("en-NG")}
               </p>
-              <span
-                className={`mt-3 inline-block rounded-full px-3 py-1.5 text-xs font-semibold ${
-                  link.flow === "insured"
-                    ? "bg-marigold/15 text-marigold-ink"
-                    : "bg-terracotta/15 text-terracotta"
-                }`}
-              >
-                {link.flow === "insured" ? "Insured delivery" : "Pure delivery"}
+              <span className="mt-3 inline-block rounded-full bg-marigold/15 px-3 py-1.5 text-xs font-semibold text-marigold-ink">
+                Same-day delivery included
               </span>
             </div>
 
-            <CheckoutForm
-              slug={slug}
-              itemName={link.item_name}
-              flow={link.flow as "insured" | "pure_delivery"}
-            />
+            <CheckoutForm slug={slug} itemName={link.item_name} />
           </>
         )}
       </div>

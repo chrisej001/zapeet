@@ -1,12 +1,12 @@
 # Zapeet — Vendor App
 
-Insured checkout. Automated delivery. The vendor-facing PWA — generate payment links, track orders, insurance, and delivery. This is what ships to the App Store / Play Store via Capacitor. No marketing content lives here; that's the separate `zapeet` (marketing) repo.
+Instant payouts. Automated delivery. The vendor-facing PWA — generate payment links, get paid straight to your own bank, and track delivery. This is what ships to the App Store / Play Store via Capacitor. No marketing content lives here; that's the separate `zapeet` (marketing) repo.
 
 ## Stack
 
 - Next.js (App Router) + TypeScript + Tailwind CSS v4
 - Supabase — Postgres, auth, storage (free tier, project `Zapeet` under the `probuenoafriltd` org)
-- Felicity Partner API — payments (virtual accounts), insurance, delivery (test mode)
+- Felicity Partner API — one-time checkout accounts with instant split payouts, and same-day delivery
 - Framer Motion for interaction/animation
 
 ## App shape
@@ -14,8 +14,15 @@ Insured checkout. Automated delivery. The vendor-facing PWA — generate payment
 No marketing/landing content — the app opens straight to a logo splash, then routes to `/auth` (unauthenticated) or `/dashboard` (authenticated). Mobile-first throughout; this is the surface that gets wrapped with Capacitor for the native builds.
 
 - `/` — splash screen, checks session, redirects
-- `/auth` — email/password sign in + sign up (Supabase Auth)
-- `/dashboard` — vendor home (placeholder for now — link generation, orders, and delivery status land next)
+- `/auth` — email/password sign in + sign up (Supabase Auth); `/auth/forgot` → emailed link → `/auth/callback` → `/auth/reset`
+- `/onboarding` — vendor adds their payout bank account (live name-enquiry), phone and pickup address. No KYC.
+- `/dashboard` — payouts overview; `/dashboard/links` payment links; `/dashboard/profile` payout account + change password
+- `/dashboard/admin` — admin-only: Zapeet fee account balance/withdrawals, vendors, orders, deliveries
+- `/pay/[slug]` — public checkout
+
+## Money flow
+
+Each order is a Felicity `create_checkout` with `splits` (no vendor talent/VA): the customer pays item + delivery into a one-time account; on settlement Felicity pays the vendor's bank and Zapeet's fee account instantly and books the rider. Zapeet's fee is 2% of the item price, capped at ₦2,000 (`src/lib/fee.ts`) — taken from the vendor's payout by default, or added to the customer's total when the link's "Customer pays the Zapeet fee" toggle is on. The fee account is configured in `src/lib/zapeet-fee.ts`.
 
 ## Local development
 
@@ -48,7 +55,7 @@ npx supabase functions deploy <name>
 
 ## Felicity
 
-Test-mode partner key. Payments and delivery capabilities are enabled; **insurance capability needs to be turned on** in the Felicity partner dashboard before the Insured checkout flow can be built against it. See `Felicity Docs.pdf` for the full API reference (single endpoint, action-based POST body).
+Needs the `payments` and `delivery` capabilities. See `Felicity Docs.pdf` (§6, split-payout checkout) for the API reference (single endpoint, action-based POST body).
 
 ## Brand
 

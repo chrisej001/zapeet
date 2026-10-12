@@ -10,7 +10,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Zapeet",
-  description: "Insured checkout. Automated delivery.",
+  description: "Get paid instantly. Delivery handled.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

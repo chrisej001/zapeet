@@ -1,9 +1,11 @@
 "use client";
 
 import { Suspense, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { LogoMark } from "@/components/logo";
+import { PasswordInput } from "@/components/password-input";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "sign_in" | "sign_up";
@@ -76,8 +78,8 @@ function AuthForm() {
             </h1>
             <p className="mt-1.5 text-sm text-ink-60">
               {mode === "sign_in"
-                ? "Insured checkout. Automated delivery."
-                : "Generate payment links, insured or not, in minutes."}
+                ? "Get paid instantly. Delivery handled."
+                : "Payment links that pay you instantly and book the rider for you."}
             </p>
           </div>
         </motion.div>
@@ -107,15 +109,17 @@ function AuthForm() {
             placeholder="you@business.com"
             required
           />
-          <Field
+          <PasswordInput
             label="Password"
-            type="password"
             value={password}
             onChange={setPassword}
-            placeholder="••••••••"
-            required
-            minLength={6}
+            autoComplete={mode === "sign_in" ? "current-password" : "new-password"}
           />
+          {mode === "sign_in" && (
+            <Link href="/auth/forgot" className="-mt-2 self-end text-xs font-semibold text-ink-60 hover:text-ink">
+              Forgot password?
+            </Link>
+          )}
 
           {error && (
             <div className="rounded-[10px] bg-terracotta/10 px-4 py-3 text-sm font-medium text-terracotta">
@@ -168,7 +172,6 @@ function Field({
   onChange,
   placeholder,
   required,
-  minLength,
 }: {
   label: string;
   type: string;
@@ -176,7 +179,6 @@ function Field({
   onChange: (v: string) => void;
   placeholder?: string;
   required?: boolean;
-  minLength?: number;
 }) {
   return (
     <label className="flex flex-col gap-1.5">
@@ -187,7 +189,6 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        minLength={minLength}
         className="rounded-[10px] border border-ink/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink/40"
       />
     </label>

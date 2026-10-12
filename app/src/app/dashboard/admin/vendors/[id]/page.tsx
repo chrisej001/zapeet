@@ -3,11 +3,6 @@ import { notFound } from "next/navigation";
 import { requireAdminPage, fmtNaira, fmtDateTime, statusColor } from "../../require-admin-page";
 import { DetailRow, ListRow } from "../../list-row";
 
-function maskId(id: string | null | undefined) {
-  if (!id) return "—";
-  return `•••••••${id.slice(-4)}`;
-}
-
 export default async function AdminVendorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { admin } = await requireAdminPage();
@@ -15,15 +10,9 @@ export default async function AdminVendorDetailPage({ params }: { params: Promis
   const { data: vendor } = await admin.from("vendors").select("*").eq("id", id).single();
   if (!vendor) notFound();
 
-  const { data: felicityAccounts } = await admin
-    .from("vendor_felicity_accounts")
-    .select("mode, felicity_talent_ref, felicity_account_number, felicity_bank_name, felicity_kyc_status, onboarded_at")
-    .eq("vendor_id", id)
-    .order("mode");
-
   const { data: links } = await admin
     .from("payment_links")
-    .select("id, item_name, amount_naira, flow, status, created_at")
+    .select("id, item_name, amount_naira, customer_pays_fee, status, created_at")
     .eq("vendor_id", id)
     .order("created_at", { ascending: false });
 
@@ -45,34 +34,17 @@ export default async function AdminVendorDetailPage({ params }: { params: Promis
         </p>
 
         <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5">
-          <DetailRow label="Contact" value={`${vendor.first_name ?? ""} ${vendor.last_name ?? ""}`.trim() || "—"} />
           <DetailRow label="Phone" value={vendor.phone ?? "—"} />
-          <DetailRow label="Date of birth" value={vendor.date_of_birth ?? "—"} />
-          <DetailRow label="BVN" value={maskId(vendor.bvn)} />
-          <DetailRow label="NIN" value={maskId(vendor.nin)} />
           <DetailRow label="Pickup address" value={vendor.pickup_address ?? "—"} />
           <DetailRow label="Joined" value={fmtDateTime(vendor.created_at)} />
+          <DetailRow label="Setup complete" value={vendor.onboarded_at ? fmtDateTime(vendor.onboarded_at) : "Not yet"} />
         </div>
 
-        <h2 className="mb-3 text-sm font-semibold text-ink">Felicity accounts</h2>
-        <div className="mb-6 flex flex-col gap-3">
-          {!felicityAccounts?.length && (
-            <div className="rounded-[14px] border border-ink/10 bg-white p-4 text-center text-xs text-ink-60">
-              Not onboarded with Felicity yet.
-            </div>
-          )}
-          {felicityAccounts?.map((a) => (
-            <div key={a.mode} className="rounded-[16px] border border-ink/10 bg-white p-5">
-              <DetailRow
-                label="Mode"
-                value={a.mode === "live" ? "Live" : "Test"}
-              />
-              <DetailRow label="KYC status" value={a.felicity_kyc_status} />
-              <DetailRow label="Account number" value={a.felicity_account_number ?? "—"} />
-              <DetailRow label="Bank" value={a.felicity_bank_name ?? "—"} />
-              <DetailRow label="Onboarded" value={fmtDateTime(a.onboarded_at)} />
-            </div>
-          ))}
+        <h2 className="mb-3 text-sm font-semibold text-ink">Payout account</h2>
+        <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5">
+          <DetailRow label="Bank" value={vendor.payout_bank_name ?? "—"} />
+          <DetailRow label="Account number" value={vendor.payout_account_number ?? "—"} />
+          <DetailRow label="Account name" value={vendor.payout_account_name ?? "—"} />
         </div>
 
         <h2 className="mb-3 text-sm font-semibold text-ink">Orders ({orders?.length ?? 0})</h2>
@@ -107,7 +79,7 @@ export default async function AdminVendorDetailPage({ params }: { params: Promis
               key={l.id}
               href={`/dashboard/admin/links/${l.id}`}
               title={l.item_name}
-              subtitle={l.flow === "insured" ? "Insured" : "Pure delivery"}
+              subtitle={l.customer_pays_fee ? "Customer pays fee" : "Vendor pays fee"}
               status={l.status}
               statusClass={statusColor(l.status)}
               right={fmtNaira(l.amount_naira)}

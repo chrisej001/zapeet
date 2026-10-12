@@ -25,7 +25,7 @@ export default async function LinksPage() {
 
   const { data: links } = await supabase
     .from("payment_links")
-    .select("id, slug, item_name, amount_naira, flow, status, expires_at, created_at")
+    .select("id, slug, item_name, amount_naira, customer_pays_fee, status, expires_at, created_at")
     .order("created_at", { ascending: false });
 
   const { data: orders } = await supabase.from("orders").select("id, payment_link_id");
@@ -68,15 +68,11 @@ export default async function LinksPage() {
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    <span
-                      className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                        link.flow === "insured"
-                          ? "bg-marigold/15 text-marigold-ink"
-                          : "bg-terracotta/15 text-terracotta"
-                      }`}
-                    >
-                      {link.flow === "insured" ? "Insured" : "Pure delivery"}
-                    </span>
+                    {link.customer_pays_fee && (
+                      <span className="rounded-full bg-marigold/15 px-3 py-1.5 text-xs font-semibold text-marigold-ink">
+                        Customer pays fee
+                      </span>
+                    )}
                     <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${STATUS_STYLE[status]}`}>
                       {LINK_STATUS_LABEL[status]}
                     </span>
