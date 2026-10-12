@@ -9,8 +9,17 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://app.zapeet.app"),
   title: "Zapeet",
   description: "Get paid instantly. Delivery handled.",
+  openGraph: {
+    type: "website",
+    siteName: "Zapeet",
+    title: "Zapeet",
+    description: "Get paid instantly. Delivery handled.",
+    locale: "en_NG",
+  },
+  twitter: { card: "summary_large_image" },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

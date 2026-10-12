@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LogoMark } from "@/components/logo";
 import { CheckoutForm } from "./checkout-form";
@@ -8,6 +9,26 @@ const UNAVAILABLE_MESSAGE: Record<string, string> = {
   expired: "This payment link has expired — ask the vendor for a new one.",
   cancelled: "This payment link is no longer available.",
 };
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const { data: link } = await createAdminClient()
+    .from("payment_links")
+    .select("item_name, amount_naira, vendor:vendors(business_name)")
+    .eq("slug", slug)
+    .single();
+  if (!link) return { title: "Zapeet payment link" };
+
+  const vendor = (link.vendor as unknown as { business_name: string } | null)?.business_name;
+  const title = `${link.item_name} · ₦${Number(link.amount_naira).toLocaleString("en-NG")}`;
+  const description = `Pay${vendor ? ` ${vendor}` : ""} securely with Zapeet. Same-day delivery included.`;
+  return {
+    title,
+    description,
+    openGraph: { title, description, url: `/pay/${slug}` },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
 
 export default async function CheckoutPage({
   params,
