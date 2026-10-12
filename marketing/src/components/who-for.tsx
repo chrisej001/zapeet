@@ -5,7 +5,7 @@ const icps = [
   {
     icon: DeviceIcon,
     title: "High-value device distributors",
-    body: "Smartphone, laptop, and gaming console distributors on the Lagos Mainland who need long-term device protection to earn retail trust.",
+    body: "Smartphone, laptop, and gaming console distributors on the Lagos Mainland who need confirmed payment before an item leaves the shop — and the cash back in the bank before the next restock.",
   },
   {
     icon: TagIcon,

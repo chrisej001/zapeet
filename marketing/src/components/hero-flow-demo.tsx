@@ -2,14 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  BoltIcon,
-  CheckCircleIcon,
-  PinIcon,
-  ShieldCheckIcon,
-  TruckIcon,
-  UserIcon,
-} from "./icons";
+import { BankIcon, BoltIcon, CheckCircleIcon, PinIcon, TruckIcon, UserIcon } from "./icons";
 
 const STEP_MS = 4200;
 const STEPS = [
@@ -85,11 +78,9 @@ function VendorStep({ toneBg }: { toneBg: string }) {
         <div className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">₦185,000</div>
         <div className="mt-1.5 text-sm text-ink-60">MacBook Air M2 · 13-inch</div>
       </div>
-      <div className="flex gap-2.5">
-        <span className="rounded-full bg-marigold px-4 py-2 text-sm font-semibold text-ink">Insured</span>
-        <span className="rounded-full border border-ink/20 px-4 py-2 text-sm font-semibold text-ink-60">
-          Pure delivery
-        </span>
+      <div className="flex items-center justify-between rounded-[10px] bg-paper px-4 py-3 text-sm">
+        <span className="text-ink-60">You receive (after 2% fee)</span>
+        <span className="font-bold text-marigold-ink">₦183,000</span>
       </div>
       <motion.div
         animate={{ scale: [1, 1, 0.95, 1] }}
@@ -118,8 +109,8 @@ function CustomerStep({ toneBg }: { toneBg: string }) {
       <TypingField label="Delivery address" value="14 Allen Avenue, Ikeja" delay={0.9} />
 
       <div className="flex items-center justify-between border-t border-ink/10 pt-3.5">
-        <div className="text-sm font-semibold text-ink-60">Total due</div>
-        <div className="text-base font-extrabold text-ink">₦185,000</div>
+        <div className="text-sm font-semibold text-ink-60">Item + same-day delivery</div>
+        <div className="text-base font-extrabold text-ink">₦188,600</div>
       </div>
 
       <div className="relative">
@@ -133,7 +124,7 @@ function CustomerStep({ toneBg }: { toneBg: string }) {
             animate={{ opacity: 0 }}
             transition={{ duration: 0.001, delay: 3.2 }}
           >
-            Pay ₦185,000
+            Pay ₦188,600
           </motion.span>
         </motion.div>
         <motion.div
@@ -251,8 +242,8 @@ function DeliveredStep() {
         transition={{ delay: 0.4, duration: 0.4 }}
         className="flex items-center gap-2 rounded-full bg-marigold/15 px-4 py-2 text-sm font-semibold text-marigold-ink"
       >
-        <ShieldCheckIcon className="h-4 w-4" />
-        1-year insurance active
+        <BankIcon className="h-4 w-4" />
+        Vendor paid ₦183,000 — instantly
       </motion.div>
     </motion.div>
   );

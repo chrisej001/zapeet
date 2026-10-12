@@ -9,8 +9,8 @@ const tiles = [
   {
     src: "/images/checkout-phone-v3.jpg",
     alt: "Customer completing a payment on their phone",
-    eyebrow: "Insured checkout",
-    caption: "One link, paid and verified in seconds.",
+    eyebrow: "Instant payout",
+    caption: "One link — paid, verified, and in your bank in seconds.",
     fromX: -32,
   },
   {

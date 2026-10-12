@@ -7,7 +7,7 @@ export function SiteFooter() {
         <div className="mb-11 grid grid-cols-1 gap-9 sm:grid-cols-[1.4fr_1fr_1fr]">
           <div className="flex max-w-[300px] flex-col gap-3">
             <Brand logoSize={30} />
-            <p className="text-sm text-ink-60">insured checkout. automated delivery.</p>
+            <p className="text-sm text-ink-60">instant payouts. automated delivery.</p>
           </div>
 
           <div>
@@ -55,7 +55,7 @@ export function SiteFooter() {
 
         <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-ink/10 pt-6 text-sm text-ink-60">
           <span>© 2026 Zapeet. All rights reserved.</span>
-          <span>Insurance and delivery infrastructure provided by licensed partners.</span>
+          <span>Payment and delivery infrastructure provided by licensed partners.</span>
         </div>
       </div>
     </footer>

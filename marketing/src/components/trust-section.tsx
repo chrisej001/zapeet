@@ -1,16 +1,16 @@
-import { BankIcon, ClockIcon, ShieldCheckIcon } from "./icons";
+import { BankIcon, BoltIcon, ClockIcon } from "./icons";
 import { Reveal } from "./reveal";
 
 const items = [
   {
     icon: BankIcon,
-    title: "Bank-backed virtual accounts",
-    body: "Every vendor link settles into a dedicated Nigerian account — not a shared pool, not a promise.",
+    title: "Paid to your own bank",
+    body: "Payouts go straight to the account you add — any Nigerian bank. No wallet, no withdrawal requests, no money held back.",
   },
   {
-    icon: ShieldCheckIcon,
-    title: "Real insurance, real payout",
-    body: "Every policy is issued against a licensed provider’s live catalog, at the provider’s exact quoted price.",
+    icon: BoltIcon,
+    title: "Split the moment it clears",
+    body: "Every order gets a one-time account for the exact amount. When the transfer lands, your share and the rider fee are paid out automatically.",
   },
   {
     icon: ClockIcon,
@@ -28,7 +28,7 @@ export function TrustSection() {
             Why vendors trust us
           </p>
           <h2 className="text-3xl sm:text-4xl">
-            Bank-grade infrastructure, not another dispatch app
+            Bank-grade payments, not another dispatch app
           </h2>
         </Reveal>
 

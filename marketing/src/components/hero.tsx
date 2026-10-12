@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
-import { BoltIcon, DotsIcon, LinkIcon, ShieldCheckIcon, TruckIcon } from "./icons";
+import { BankIcon, BoltIcon, DotsIcon, LinkIcon, TruckIcon } from "./icons";
 import { HeroFlowDemo } from "./hero-flow-demo";
 import { MotionLink } from "./motion-link";
 
@@ -18,8 +18,8 @@ const textVariants: Variants = {
 };
 
 const statusRows = [
-  { icon: ShieldCheckIcon, tone: "marigold" as const, text: "1-year device insurance issued" },
-  { icon: BoltIcon, tone: "marigold" as const, text: "2.5% vendor rebate applied" },
+  { icon: BoltIcon, tone: "marigold" as const, text: "Payment confirmed in seconds" },
+  { icon: BankIcon, tone: "marigold" as const, text: "₦183,000 sent to your bank" },
   { icon: TruckIcon, tone: "terracotta" as const, text: "Rider dispatched — 12 min away" },
 ];
 
@@ -42,7 +42,7 @@ export function Hero() {
             variants={textVariants}
             className="text-xs font-bold tracking-[0.1em] text-terracotta uppercase"
           >
-            Insured checkout. Automated delivery.
+            Instant payouts. Automated delivery.
           </motion.p>
 
           <motion.h1
@@ -52,7 +52,7 @@ export function Hero() {
             variants={textVariants}
             className="text-4xl leading-[1.05] sm:text-5xl lg:text-6xl"
           >
-            Insure your delivery in one link.
+            Get paid instantly. We’ll send the rider.
           </motion.h1>
 
           <motion.p
@@ -62,9 +62,10 @@ export function Hero() {
             variants={textVariants}
             className="max-w-md text-lg leading-relaxed text-ink-60"
           >
-            Generate a payment link, get instant device cover and rider dispatch —
-            no back-and-forth on WhatsApp, no bank transfer screenshots, no
-            absorbing the loss when something goes wrong in transit.
+            Send one payment link. Your customer pays for the item and delivery in
+            a single transfer, your money lands in your own bank account the moment
+            it clears, and a rider is booked automatically — no WhatsApp
+            back-and-forth, no screenshot receipts, no wallet to withdraw from.
           </motion.p>
 
           <motion.div
@@ -139,10 +140,10 @@ export function Hero() {
 
                   <div className="flex gap-2.5">
                     <span className="rounded-full bg-marigold px-4 py-2.5 text-sm font-semibold text-ink">
-                      Insured
+                      Instant payout
                     </span>
                     <span className="rounded-full border border-ink/20 px-4 py-2.5 text-sm font-semibold text-ink-60">
-                      Pure delivery
+                      Same-day delivery
                     </span>
                   </div>
 

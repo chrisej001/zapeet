@@ -9,9 +9,9 @@ const inter = Inter({
 });
 
 const SITE_URL = "https://zapeet.app";
-const TITLE = "Zapeet — Insured checkout. Automated delivery.";
+const TITLE = "Zapeet — Instant payouts. Automated delivery.";
 const DESCRIPTION =
-  "Generate a payment link, get instant device cover and rider dispatch. Insured checkout and automated delivery for Lagos vendors.";
+  "Send one payment link: your customer pays, the money lands in your bank instantly, and a same-day rider is booked automatically. Built for Lagos vendors.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -19,13 +19,12 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   keywords: [
     "Zapeet",
-    "insured checkout",
-    "device insurance Nigeria",
-    "gadget insurance Lagos",
-    "same-day delivery Lagos",
+    "instant payouts",
     "payment links Nigeria",
+    "same-day delivery Lagos",
     "Lagos vendors",
-    "insured delivery",
+    "social commerce Nigeria",
+    "automated delivery",
   ],
   authors: [{ name: "Zapeet" }],
   creator: "Zapeet",

@@ -19,8 +19,8 @@ const painPoints = [
   },
   {
     icon: AlertIcon,
-    title: "Unhedged risk",
-    body: "Transit theft and post-sale device damage come out of the vendor’s pocket, every time.",
+    title: "Money stuck in limbo",
+    body: "Funds sit with a middleman or in a wallet until you chase a withdrawal — cash you need for the next restock.",
   },
 ];
 

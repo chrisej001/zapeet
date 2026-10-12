@@ -5,10 +5,10 @@ export function FinalCta() {
   return (
     <section className="bg-ink py-16 text-center sm:py-24 lg:py-28">
       <Reveal className="mx-auto flex max-w-xl flex-col items-center gap-5 px-5 sm:px-8">
-        <h2 className="text-3xl text-paper sm:text-5xl">Protected. Instant. Local.</h2>
+        <h2 className="text-3xl text-paper sm:text-5xl">Paid. Picked up. Delivered.</h2>
         <p className="text-lg text-paper/70">
-          Give your customers a payment link that pays you, insures them, and gets
-          the rider moving — before they close the chat.
+          Give your customers a payment link that pays you instantly and gets the
+          rider moving — before they close the chat.
         </p>
         <div className="mt-2 flex flex-wrap items-center justify-center gap-6">
           <MotionLink

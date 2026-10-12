@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Zapeet — Insured checkout. Automated delivery.";
+export const alt = "Zapeet — Instant payouts. Automated delivery.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -48,7 +48,7 @@ export default function TwitterImage() {
             maxWidth: 920,
           }}
         >
-          Insured checkout. Automated delivery.
+          Instant payouts. Automated delivery.
         </div>
         <div style={{ display: "flex", fontSize: 28, color: "#F2A93B", marginTop: 32, fontWeight: 600 }}>
           Built for Lagos vendors
