@@ -274,6 +274,7 @@ export type Delivery = {
   driver_name: string | null;
   driver_phone: string | null;
   delivery_pin: string;
+  tracking_url: string | null;
   timeline: unknown[];
   created_at: string;
 };

@@ -28,6 +28,9 @@ export default async function LinksPage() {
     .select("id, slug, item_name, amount_naira, flow, status, expires_at, created_at")
     .order("created_at", { ascending: false });
 
+  const { data: orders } = await supabase.from("orders").select("id, payment_link_id");
+  const orderIdByLink = new Map((orders ?? []).map((o) => [o.payment_link_id, o.id]));
+
   return (
     <div className="flex min-h-dvh flex-col bg-paper px-6 py-8 pb-28">
       <div className="mx-auto w-full max-w-sm">
@@ -85,7 +88,16 @@ export default async function LinksPage() {
                     <LinkIcon className="h-3.5 w-3.5" />
                     /pay/{link.slug}
                   </div>
-                  <CopyLinkButton slug={link.slug} disabled={!usable} />
+                  {status === "paid" && orderIdByLink.has(link.id) ? (
+                    <Link
+                      href={`/dashboard/orders/${orderIdByLink.get(link.id)}`}
+                      className="rounded-[8px] border border-ink/15 px-3 py-1.5 text-xs font-semibold text-ink"
+                    >
+                      View order
+                    </Link>
+                  ) : (
+                    <CopyLinkButton slug={link.slug} disabled={!usable} />
+                  )}
                 </div>
               </div>
             );

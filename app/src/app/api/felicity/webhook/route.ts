@@ -9,7 +9,7 @@ import {
   RUBIES_MFB_BANK_CODE,
   FelicityError,
 } from "@/lib/felicity/client";
-import { sendPolicyEmail } from "@/lib/resend";
+import { sendPolicyEmail, sendDeliveryEmail, sendVendorDeliveryEmail } from "@/lib/resend";
 import { resolveVendorFelicityAccount } from "@/lib/felicity/vendor-identity";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -134,7 +134,42 @@ async function handleCheckoutCompleted(admin: any, data: Json) {
         driver_name: delivery.driver_name,
         driver_phone: delivery.driver_phone,
         delivery_pin: delivery.delivery_pin,
+        tracking_url: delivery.tracking_url,
       });
+
+      if (order.customer_email) {
+        const itemName =
+          (order.payment_links as unknown as { item_name: string } | null)?.item_name ?? "your order";
+        try {
+          await sendDeliveryEmail({
+            to: order.customer_email,
+            firstName: order.customer_first_name ?? "there",
+            itemName,
+            deliveryPin: delivery.delivery_pin,
+            trackingUrl: delivery.tracking_url,
+          });
+        } catch (err) {
+          console.error("delivery email (customer) failed", orderId, err);
+        }
+      }
+
+      try {
+        const { data: vendorAuth } = await admin.auth.admin.getUserById(order.vendor_id);
+        const vendorEmail = vendorAuth?.user?.email;
+        if (vendorEmail) {
+          const itemName =
+            (order.payment_links as unknown as { item_name: string } | null)?.item_name ?? "an order";
+          await sendVendorDeliveryEmail({
+            to: vendorEmail,
+            itemName,
+            customerName: order.customer_first_name ?? "Customer",
+            deliveryPin: delivery.delivery_pin,
+            trackingUrl: delivery.tracking_url,
+          });
+        }
+      } catch (err) {
+        console.error("delivery email (vendor) failed", orderId, err);
+      }
     } catch (err) {
       console.error("get_delivery failed after checkout_completed", orderId, err);
     }
@@ -311,6 +346,7 @@ async function handleDeliveryEvent(admin: any, data: Json) {
       status: data.status ?? "unknown",
       driver_name: data.driver_name ?? null,
       driver_phone: data.driver_phone ?? null,
+      tracking_url: data.tracking_url ?? null,
     })
     .eq("felicity_delivery_reference", deliveryReference);
 }

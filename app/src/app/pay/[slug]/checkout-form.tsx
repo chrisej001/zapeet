@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { createOrder, simulatePayment, type CreateOrderState } from "./actions";
+import { useActionState, useEffect, useState } from "react";
+import { createOrder, simulatePayment, getOrderStatus, type CreateOrderState, type OrderStatus } from "./actions";
 import { CheckCircleIcon } from "./checkout-icons";
 
 const initialState: CreateOrderState = { error: null, order: null };
@@ -20,6 +20,7 @@ export function CheckoutForm({
   const [confirmedToPay, setConfirmedToPay] = useState(false);
   const [simulateState, setSimulateState] = useState<"idle" | "pending" | "done" | "error">("idle");
   const [simulateError, setSimulateError] = useState<string | null>(null);
+  const [orderStatus, setOrderStatus] = useState<OrderStatus | null>(null);
 
   async function handleSimulate(orderId: string) {
     setSimulateState("pending");
@@ -32,6 +33,26 @@ export function CheckoutForm({
       setSimulateError(result.error);
     }
   }
+
+  // Poll for payment confirmation once the customer is looking at the
+  // transfer screen — the webhook is the only thing that knows a transfer
+  // landed, so this is the only way the page finds out without a refresh.
+  useEffect(() => {
+    if (!confirmedToPay || !state.order || orderStatus?.paid) return;
+    const orderId = state.order.orderId;
+    let cancelled = false;
+    const poll = async () => {
+      const status = await getOrderStatus(orderId);
+      if (!cancelled) setOrderStatus(status);
+    };
+    poll();
+    const interval = setInterval(poll, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmedToPay, state.order?.orderId, orderStatus?.paid]);
 
   if (state.order) {
     const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
@@ -59,6 +80,46 @@ export function CheckoutForm({
           >
             Pay {naira(state.order.totalAmountNaira)}
           </button>
+        </div>
+      );
+    }
+
+    if (orderStatus?.paid) {
+      return (
+        <div className="flex flex-col gap-5 rounded-[20px] border border-ink/10 bg-white p-6">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-marigold/15 text-marigold-ink">
+              <CheckCircleIcon className="h-6 w-6" />
+            </div>
+            <p className="text-base font-bold text-ink">Payment confirmed</p>
+            <p className="text-sm text-ink-60">
+              {itemName} is on its way. We’ve also emailed this to you — keep the PIN for the rider.
+            </p>
+          </div>
+
+          {orderStatus.deliveryPin ? (
+            <div className="rounded-[14px] bg-paper p-4 text-center">
+              <p className="text-[11px] font-bold tracking-[0.06em] text-ink-60 uppercase">Delivery PIN</p>
+              <p className="mt-1 text-3xl font-extrabold tracking-[0.1em] text-ink">
+                {orderStatus.deliveryPin}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-[14px] border border-dashed border-ink/20 p-4 text-center text-sm text-ink-60">
+              Booking your delivery — your PIN will be emailed to you shortly.
+            </div>
+          )}
+
+          {orderStatus.trackingUrl && (
+            <a
+              href={orderStatus.trackingUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full rounded-[10px] bg-ink py-3.5 text-center text-sm font-semibold text-paper"
+            >
+              Track your delivery
+            </a>
+          )}
         </div>
       );
     }

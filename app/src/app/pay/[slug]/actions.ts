@@ -191,6 +191,45 @@ export async function createOrder(
   };
 }
 
+export type OrderStatus = {
+  paid: boolean;
+  deliveryPin: string | null;
+  trackingUrl: string | null;
+};
+
+/** Polled from the checkout page once the customer is on the "transfer to
+ * complete your order" screen — the only way the page learns a transfer
+ * landed and a delivery PIN/tracking link exist, since payment confirmation
+ * only ever arrives via Felicity's webhook, never as a response the browser
+ * is already holding. Reads straight from our own tables (already RLS'd off
+ * for anon via the anon key — this uses the admin client since checkout is
+ * unauthenticated), not Felicity, so it's cheap to poll. */
+export async function getOrderStatus(orderId: string): Promise<OrderStatus> {
+  const admin = createAdminClient();
+
+  const { data: order } = await admin
+    .from("orders")
+    .select("payment_status")
+    .eq("id", orderId)
+    .single();
+
+  if (!order || order.payment_status !== "paid") {
+    return { paid: false, deliveryPin: null, trackingUrl: null };
+  }
+
+  const { data: delivery } = await admin
+    .from("deliveries")
+    .select("delivery_pin, tracking_url")
+    .eq("order_id", orderId)
+    .maybeSingle();
+
+  return {
+    paid: true,
+    deliveryPin: delivery?.delivery_pin ?? null,
+    trackingUrl: delivery?.tracking_url ?? null,
+  };
+}
+
 /** Test-mode-only "pay now" shortcut, the same simulate_checkout_funding
  * action used to verify the full settlement chain end-to-end — Felicity
  * itself refuses this with simulate_only_in_test_mode outside test mode, so

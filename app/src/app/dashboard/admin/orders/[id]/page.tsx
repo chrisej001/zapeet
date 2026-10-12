@@ -157,6 +157,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
               <DetailRow label="Driver" value={delivery.driver_name ?? "—"} />
               <DetailRow label="Driver phone" value={delivery.driver_phone ?? "—"} />
               <DetailRow label="Pickup PIN" value={delivery.delivery_pin ?? "—"} />
+              <DetailRow label="Tracking URL" value={delivery.tracking_url ?? "—"} />
             </>
           ) : (
             <p className="text-sm text-ink-60">Not booked yet.</p>
