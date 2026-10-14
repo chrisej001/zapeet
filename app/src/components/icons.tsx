@@ -128,3 +128,31 @@ export function LockIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function CopyIcon({ className }: IconProps) {
+  return (
+    <svg {...base} strokeWidth={1.9} className={className}>
+      <rect x="9" y="9" width="11" height="11" rx="2.5" />
+      <path d="M15 9V6.5A2.5 2.5 0 0 0 12.5 4h-6A2.5 2.5 0 0 0 4 6.5v6A2.5 2.5 0 0 0 6.5 15H9" />
+    </svg>
+  );
+}
+
+export function ShareIcon({ className }: IconProps) {
+  return (
+    <svg {...base} strokeWidth={1.9} className={className}>
+      <path d="M12 15V3.5" />
+      <path d="M8 7.5l4-4 4 4" />
+      <path d="M8 11H6.5A1.5 1.5 0 0 0 5 12.5v7A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5H16" />
+    </svg>
+  );
+}
+
+export function PlusSquareIcon({ className }: IconProps) {
+  return (
+    <svg {...base} strokeWidth={1.9} className={className}>
+      <rect x="4" y="4" width="16" height="16" rx="3.5" />
+      <path d="M12 8.5v7M8.5 12h7" />
+    </svg>
+  );
+}

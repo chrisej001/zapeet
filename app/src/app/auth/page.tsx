@@ -71,7 +71,9 @@ function AuthForm() {
           transition={{ duration: 0.4 }}
           className="flex flex-col items-center gap-3 pb-10"
         >
-          <LogoMark size={44} />
+          <a href="https://zapeet.app" aria-label="Zapeet home">
+            <LogoMark size={44} />
+          </a>
           <div className="text-center">
             <h1 className="text-2xl">
               {mode === "sign_in" ? "Log in to Zapeet" : "Create your vendor account"}

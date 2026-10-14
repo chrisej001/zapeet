@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Inter } from "next/font/google";
+import { InstallBanner } from "@/components/install-banner";
+import { NavigationLoader } from "@/components/navigation-loader";
 import "./globals.css";
 
 const inter = Inter({
@@ -21,6 +24,7 @@ export const metadata: Metadata = {
   },
   twitter: { card: "summary_large_image" },
   manifest: "/manifest.json",
+  icons: { apple: "/icons/icon-192.png" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -41,7 +45,13 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        {children}
+        <Suspense fallback={null}>
+          <NavigationLoader />
+        </Suspense>
+        <InstallBanner />
+      </body>
     </html>
   );
 }

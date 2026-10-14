@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { createOrder, simulatePayment, getOrderStatus, type CreateOrderState, type OrderStatus } from "./actions";
 import { CheckCircleIcon } from "./checkout-icons";
+import { CheckIcon, CopyIcon } from "@/components/icons";
 
 const initialState: CreateOrderState = { error: null, order: null };
 
@@ -129,8 +130,13 @@ export function CheckoutForm({ slug, itemName }: { slug: string; itemName: strin
         </div>
 
         <div className="flex flex-col gap-3 rounded-[14px] bg-paper p-4">
-          <Row label="Amount" value={naira(state.order.totalAmountNaira)} bold />
-          <Row label="Account number" value={state.order.accountNumber} />
+          <Row
+            label="Amount"
+            value={naira(state.order.totalAmountNaira)}
+            copyValue={String(state.order.totalAmountNaira)}
+            bold
+          />
+          <Row label="Account number" value={state.order.accountNumber} copyValue={state.order.accountNumber} />
           <Row label="Bank" value={state.order.bankName} />
           <Row label="Account name" value={state.order.accountName} />
         </div>
@@ -227,11 +233,62 @@ function Field({
   );
 }
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function Row({
+  label,
+  value,
+  bold,
+  copyValue,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  copyValue?: string;
+}) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className={`text-sm ${bold ? "font-semibold text-ink" : "text-ink-60"}`}>{label}</span>
-      <span className={`text-sm font-bold text-ink ${bold ? "text-base" : ""}`}>{value}</span>
+      <span className="flex items-center gap-2">
+        <span className={`text-sm font-bold text-ink ${bold ? "text-base" : ""}`}>{value}</span>
+        {copyValue && <CopyButton value={copyValue} label={label} />}
+      </span>
     </div>
+  );
+}
+
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      // In-app browsers (WhatsApp, Instagram) sometimes block the async
+      // clipboard API — fall back to the legacy copy command.
+      const el = document.createElement("textarea");
+      el.value = value;
+      el.setAttribute("readonly", "");
+      el.style.position = "fixed";
+      el.style.opacity = "0";
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      el.remove();
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      aria-label={copied ? `${label} copied` : `Copy ${label.toLowerCase()}`}
+      className={`flex h-8 items-center gap-1 rounded-[8px] px-2 text-xs font-semibold transition-colors ${
+        copied ? "bg-marigold/15 text-marigold-ink" : "bg-white text-ink active:bg-ink/5"
+      }`}
+    >
+      {copied ? <CheckIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
+      {copied ? "Copied" : "Copy"}
+    </button>
   );
 }

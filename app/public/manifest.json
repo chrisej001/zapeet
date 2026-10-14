@@ -1,8 +1,10 @@
 {
   "name": "Zapeet",
   "short_name": "Zapeet",
-  "description": "Insured checkout. Automated delivery.",
+  "description": "Get paid instantly. Delivery handled.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#1B1F3B",
   "theme_color": "#1B1F3B",

@@ -43,7 +43,9 @@ function ForgotPasswordForm() {
     <div className="flex min-h-dvh flex-col bg-paper">
       <div className="flex flex-1 flex-col justify-center px-6 py-12 sm:mx-auto sm:w-full sm:max-w-sm">
         <div className="flex flex-col items-center gap-3 pb-10">
-          <LogoMark size={44} />
+          <a href="https://zapeet.app" aria-label="Zapeet home">
+            <LogoMark size={44} />
+          </a>
           <div className="text-center">
             <h1 className="text-2xl">Reset your password</h1>
             <p className="mt-1.5 text-sm text-ink-60">
