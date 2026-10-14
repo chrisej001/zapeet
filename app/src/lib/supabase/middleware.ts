@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/", "/auth", "/pay"];
+const PUBLIC_PATHS = ["/", "/auth", "/pay", "/track"];
 
 export async function updateSession(request: NextRequest) {
   // API routes authenticate themselves per-route (e.g. webhook signature

@@ -8,6 +8,7 @@ export default async function AdminDeliveriesPage() {
   const { data: deliveries } = await admin
     .from("deliveries")
     .select("id, order_id, felicity_delivery_reference, fee_naira, status, created_at, vendors(business_name)")
+    .eq("is_demo", false)
     .order("created_at", { ascending: false })
     .limit(100);
 

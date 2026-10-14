@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { LinkIcon } from "@/components/icons";
 import { CopyLinkButton } from "../copy-link-button";
 import { BottomNav } from "../bottom-nav";
+import { DemoBadge } from "../demo-badge";
 import { effectiveLinkStatus, isLinkUsable, LINK_STATUS_LABEL } from "@/lib/payment-link-status";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -23,17 +24,22 @@ export default async function LinksPage() {
     redirect("/auth");
   }
 
+  const { data: vendor } = await supabase.from("vendors").select("demo_mode").eq("id", user.id).single();
+  const demoMode = vendor?.demo_mode ?? false;
+
   const { data: links } = await supabase
     .from("payment_links")
     .select("id, slug, item_name, amount_naira, customer_pays_fee, status, expires_at, created_at")
+    .eq("is_demo", demoMode)
     .order("created_at", { ascending: false });
 
-  const { data: orders } = await supabase.from("orders").select("id, payment_link_id");
+  const { data: orders } = await supabase.from("orders").select("id, payment_link_id").eq("is_demo", demoMode);
   const orderIdByLink = new Map((orders ?? []).map((o) => [o.payment_link_id, o.id]));
 
   return (
     <div className="flex min-h-dvh flex-col bg-paper px-6 py-8 pb-28">
       <div className="mx-auto w-full max-w-sm">
+        {demoMode && <DemoBadge />}
         <h1 className="mb-6 text-xl">Payment links</h1>
 
         <Link

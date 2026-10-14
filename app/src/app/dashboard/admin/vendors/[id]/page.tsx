@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminPage, fmtNaira, fmtDateTime, statusColor } from "../../require-admin-page";
 import { DetailRow, ListRow } from "../../list-row";
+import { DemoModeCard } from "../../demo-mode-card";
 
 export default async function AdminVendorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,12 +15,20 @@ export default async function AdminVendorDetailPage({ params }: { params: Promis
     .from("payment_links")
     .select("id, item_name, amount_naira, customer_pays_fee, status, created_at")
     .eq("vendor_id", id)
+    .eq("is_demo", false)
     .order("created_at", { ascending: false });
+
+  const { count: demoLinkCount } = await admin
+    .from("payment_links")
+    .select("id", { count: "exact", head: true })
+    .eq("vendor_id", id)
+    .eq("is_demo", true);
 
   const { data: orders } = await admin
     .from("orders")
     .select("id, total_amount_naira, payment_status, created_at, customer_first_name, customer_last_name")
     .eq("vendor_id", id)
+    .eq("is_demo", false)
     .order("created_at", { ascending: false });
 
   return (
@@ -39,6 +48,14 @@ export default async function AdminVendorDetailPage({ params }: { params: Promis
           <DetailRow label="Joined" value={fmtDateTime(vendor.created_at)} />
           <DetailRow label="Setup complete" value={vendor.onboarded_at ? fmtDateTime(vendor.onboarded_at) : "Not yet"} />
         </div>
+
+        <h2 className="mb-3 text-sm font-semibold text-ink">Mode</h2>
+        <DemoModeCard
+          vendorId={vendor.id}
+          businessName={vendor.business_name}
+          demoMode={vendor.demo_mode}
+          demoLinkCount={demoLinkCount ?? 0}
+        />
 
         <h2 className="mb-3 text-sm font-semibold text-ink">Payout account</h2>
         <div className="mb-6 rounded-[16px] border border-ink/10 bg-white p-5">

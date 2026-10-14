@@ -10,6 +10,7 @@ export default async function AdminOrdersPage() {
     .select(
       "id, total_amount_naira, payment_status, created_at, customer_first_name, customer_last_name, vendors(business_name)",
     )
+    .eq("is_demo", false)
     .order("created_at", { ascending: false })
     .limit(100);
 

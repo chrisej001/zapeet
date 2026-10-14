@@ -5,6 +5,7 @@ import { createCheckout, simulateCheckoutFunding, FelicityError } from "@/lib/fe
 import { isLinkUsable } from "@/lib/payment-link-status";
 import { planPayout } from "@/lib/fee";
 import { ZAPEET_FEE_ACCOUNT } from "@/lib/zapeet-fee";
+import { DEMO_BANK_NAME, DEMO_DELIVERY_NAIRA, demoAccountNumber, settleDemoOrder } from "@/lib/demo";
 
 export type CreateOrderState = {
   error: string | null;
@@ -21,6 +22,9 @@ export type CreateOrderState = {
     /** From the checkout response's own mode field, not a static env var —
      * so the Simulate button can never drift out of sync with the real key. */
     testMode: boolean;
+    /** Demo-mode link: no Felicity checkout exists, the account is fake and
+     * "payment" is simulated locally (see lib/demo.ts). */
+    demo: boolean;
   } | null;
 };
 
@@ -34,7 +38,7 @@ export async function createOrder(
   const { data: link } = await admin
     .from("payment_links")
     .select(
-      "id, vendor_id, amount_naira, status, expires_at, item_name, customer_pays_fee",
+      "id, vendor_id, amount_naira, status, expires_at, item_name, customer_pays_fee, is_demo",
     )
     .eq("slug", slug)
     .single();
@@ -96,31 +100,44 @@ export async function createOrder(
   const plan = planPayout(itemPrice, link.customer_pays_fee);
 
   let checkout;
-  try {
-    const result = await createCheckout({
-      order_ref: orderId,
-      goods_amount_naira: plan.goodsAmountNaira,
-      splits: [
-        {
-          account_number: vendor.payout_account_number,
-          bank_code: vendor.payout_bank_code,
-          account_name: vendor.payout_account_name,
-          percentage: plan.vendorPercentage,
-        },
-        {
-          account_number: ZAPEET_FEE_ACCOUNT.account_number,
-          bank_code: ZAPEET_FEE_ACCOUNT.bank_code,
-          account_name: ZAPEET_FEE_ACCOUNT.account_name,
-          percentage: plan.feePercentage,
-        },
-      ],
-      label: vendor.business_name,
-      delivery: deliveryInput,
-    });
-    checkout = result.checkout;
-  } catch (err) {
-    const message = err instanceof FelicityError ? err.message : "Something went wrong — please try again.";
-    return { error: message, order: null };
+  if (link.is_demo) {
+    const deliveryAmount = DEMO_DELIVERY_NAIRA;
+    checkout = {
+      account_number: demoAccountNumber(),
+      account_name: `Checkout - ${vendor.business_name}`,
+      bank_name: DEMO_BANK_NAME,
+      delivery_amount_naira: deliveryAmount,
+      total_amount_naira: plan.goodsAmountNaira + deliveryAmount,
+      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      mode: "demo",
+    };
+  } else {
+    try {
+      const result = await createCheckout({
+        order_ref: orderId,
+        goods_amount_naira: plan.goodsAmountNaira,
+        splits: [
+          {
+            account_number: vendor.payout_account_number,
+            bank_code: vendor.payout_bank_code,
+            account_name: vendor.payout_account_name,
+            percentage: plan.vendorPercentage,
+          },
+          {
+            account_number: ZAPEET_FEE_ACCOUNT.account_number,
+            bank_code: ZAPEET_FEE_ACCOUNT.bank_code,
+            account_name: ZAPEET_FEE_ACCOUNT.account_name,
+            percentage: plan.feePercentage,
+          },
+        ],
+        label: vendor.business_name,
+        delivery: deliveryInput,
+      });
+      checkout = result.checkout;
+    } catch (err) {
+      const message = err instanceof FelicityError ? err.message : "Something went wrong — please try again.";
+      return { error: message, order: null };
+    }
   }
 
   const { error: insertError } = await admin.from("orders").insert({
@@ -146,6 +163,7 @@ export async function createOrder(
     felicity_checkout_account_name: checkout.account_name,
     felicity_checkout_bank_name: checkout.bank_name,
     felicity_checkout_expires_at: checkout.expires_at,
+    is_demo: link.is_demo,
   });
 
   if (insertError) {
@@ -163,7 +181,8 @@ export async function createOrder(
       customerFeeNaira: link.customer_pays_fee ? plan.feeNaira : 0,
       deliveryAmountNaira: checkout.delivery_amount_naira,
       totalAmountNaira: checkout.total_amount_naira,
-      testMode: checkout.mode === "test",
+      testMode: checkout.mode === "test" || link.is_demo,
+      demo: link.is_demo,
     },
   };
 }
@@ -217,6 +236,9 @@ export async function getOrderStatus(orderId: string): Promise<OrderStatus> {
 export async function simulatePayment(
   orderId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: order } = await createAdminClient().from("orders").select("is_demo").eq("id", orderId).single();
+  if (order?.is_demo) return settleDemoOrder(orderId);
+
   try {
     await simulateCheckoutFunding(orderId);
     return { ok: true };

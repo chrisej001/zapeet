@@ -3,18 +3,31 @@ import { getTalent, getTransactions } from "@/lib/felicity/client";
 import { ZAPEET_FEE_ACCOUNT } from "@/lib/zapeet-fee";
 import { requireAdminPage, fmtNaira } from "./require-admin-page";
 import { FeeAccountCard } from "./fee-account-card";
+import { DemoModeCard } from "./demo-mode-card";
 
 export default async function AdminPage() {
-  const { admin } = await requireAdminPage();
+  const { user, admin } = await requireAdminPage();
 
-  const [vendorsCount, ordersCount, deliveriesCount, linksCount, paidOrders, failedPayouts] = await Promise.all([
-    admin.from("vendors").select("id", { count: "exact", head: true }),
-    admin.from("orders").select("id", { count: "exact", head: true }),
-    admin.from("deliveries").select("id", { count: "exact", head: true }),
-    admin.from("payment_links").select("id", { count: "exact", head: true }),
-    admin.from("orders").select("zapeet_fee_naira").eq("payment_status", "paid"),
-    admin.from("orders").select("id", { count: "exact", head: true }).eq("payout_status", "failed"),
-  ]);
+  // Demo-mode records never count here — they're not real business.
+  const [vendorsCount, ordersCount, deliveriesCount, linksCount, paidOrders, failedPayouts, me, myDemoLinks] =
+    await Promise.all([
+      admin.from("vendors").select("id", { count: "exact", head: true }),
+      admin.from("orders").select("id", { count: "exact", head: true }).eq("is_demo", false),
+      admin.from("deliveries").select("id", { count: "exact", head: true }).eq("is_demo", false),
+      admin.from("payment_links").select("id", { count: "exact", head: true }).eq("is_demo", false),
+      admin.from("orders").select("zapeet_fee_naira").eq("payment_status", "paid").eq("is_demo", false),
+      admin
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("payout_status", "failed")
+        .eq("is_demo", false),
+      admin.from("vendors").select("business_name, demo_mode").eq("id", user.id).single(),
+      admin
+        .from("payment_links")
+        .select("id", { count: "exact", head: true })
+        .eq("vendor_id", user.id)
+        .eq("is_demo", true),
+    ]);
 
   const feesEarned = (paidOrders.data ?? []).reduce((sum, o) => sum + Number(o.zapeet_fee_naira ?? 0), 0);
 
@@ -67,6 +80,14 @@ export default async function AdminPage() {
             </span>
           </div>
         </div>
+
+        <h2 className="mb-3 text-sm font-semibold text-ink">Your account mode</h2>
+        <DemoModeCard
+          vendorId={user.id}
+          businessName={me.data?.business_name ?? "Your account"}
+          demoMode={me.data?.demo_mode ?? false}
+          demoLinkCount={myDemoLinks.count ?? 0}
+        />
 
         <FeeAccountCard
           accountNumber={ZAPEET_FEE_ACCOUNT.account_number}

@@ -13,6 +13,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       "*, vendors(id, business_name), payment_links(item_name, slug)",
     )
     .eq("id", id)
+    .eq("is_demo", false)
     .single();
   if (!order) notFound();
 

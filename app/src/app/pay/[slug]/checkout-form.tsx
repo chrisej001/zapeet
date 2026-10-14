@@ -21,6 +21,9 @@ export function CheckoutForm({ slug, itemName }: { slug: string; itemName: strin
     const result = await simulatePayment(orderId);
     if (result.ok) {
       setSimulateState("done");
+      // Demo orders settle synchronously — show the confirmation right away
+      // instead of waiting for the next poll.
+      setOrderStatus(await getOrderStatus(orderId));
     } else {
       setSimulateState("error");
       setSimulateError(result.error);
@@ -144,11 +147,13 @@ export function CheckoutForm({ slug, itemName }: { slug: string; itemName: strin
         {state.order.testMode && (
           <div className="rounded-[14px] border border-dashed border-ink/20 p-4">
             <p className="mb-3 text-xs font-semibold text-ink-60">
-              TEST MODE — simulate the transfer instead of sending real money
+              {state.order.demo
+                ? "DEMO — tap below to simulate the customer's transfer. No real money moves."
+                : "TEST MODE — simulate the transfer instead of sending real money"}
             </p>
             {simulateState === "done" ? (
               <p className="text-sm font-semibold text-marigold-ink">
-                ✓ Payment simulated — payout and delivery are processing.
+                ✓ Payment simulated — confirming now…
               </p>
             ) : (
               <>

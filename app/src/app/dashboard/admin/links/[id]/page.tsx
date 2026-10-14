@@ -12,6 +12,7 @@ export default async function AdminLinkDetailPage({ params }: { params: Promise<
     .from("payment_links")
     .select("*, vendors(id, business_name)")
     .eq("id", id)
+    .eq("is_demo", false)
     .single();
   if (!link) notFound();
 

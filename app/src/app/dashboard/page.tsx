@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { OverviewCard, type OverviewOrder } from "./overview-card";
 import { BottomNav } from "./bottom-nav";
+import { DemoBadge } from "./demo-badge";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -13,21 +14,24 @@ export default async function DashboardPage() {
     redirect("/auth");
   }
 
-  const [{ data: vendor }, { data: orders }] = await Promise.all([
-    supabase
-      .from("vendors")
-      .select("business_name, payout_bank_name, payout_account_number")
-      .eq("id", user.id)
-      .single(),
-    supabase
-      .from("orders")
-      .select(
-        "id, created_at, paid_at, vendor_payout_naira, goods_amount_naira, payout_status, customer_first_name, payment_links(item_name)",
-      )
-      .eq("payment_status", "paid")
-      .order("paid_at", { ascending: false })
-      .limit(100),
-  ]);
+  const { data: vendor } = await supabase
+    .from("vendors")
+    .select("business_name, payout_bank_name, payout_account_number, demo_mode")
+    .eq("id", user.id)
+    .single();
+  const demoMode = vendor?.demo_mode ?? false;
+
+  // Demo and live records never mix — the vendor sees whichever mode
+  // they're currently in.
+  const { data: orders } = await supabase
+    .from("orders")
+    .select(
+      "id, created_at, paid_at, vendor_payout_naira, goods_amount_naira, payout_status, customer_first_name, payment_links(item_name)",
+    )
+    .eq("payment_status", "paid")
+    .eq("is_demo", demoMode)
+    .order("paid_at", { ascending: false })
+    .limit(100);
 
   const paidOrders: OverviewOrder[] = (orders ?? []).map((o) => ({
     id: o.id,
@@ -43,6 +47,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-paper px-6 py-8 pb-28">
       <div className="mx-auto w-full max-w-sm">
+        {demoMode && <DemoBadge />}
         <OverviewCard
           businessName={vendor?.business_name ?? "Your business"}
           payoutBankName={vendor?.payout_bank_name ?? null}
